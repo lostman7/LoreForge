@@ -6,7 +6,8 @@ LoreForge is a modern, standalone Electron application designed for immersive ro
 
 - **🎮 Standalone RPG Experience**: Full-screen immersive mode with dynamic backgrounds and modern aesthetics.
 - **🤖 Multi-Backend AI**: Seamlessly switch between **Claude**, **ChatGPT**, **Grok**, **Llama Cloud**, and local models via **Ollama**.
-- **🎤 Advanced STT**: Integrated OpenAI Whisper support with real-time WebSocket streaming for live transcriptions.
+- **🎤 Advanced STT**: Improved microphone handling with a more reliable sidebar toggle and better local startup checks.
+- **🗣️ Flexible TTS**: Local Piper voices plus offline Qwen3-TTS character speech using per-character voice reference files.
 - **🧠 Character Memory**: Each NPC has persistent memory and dedicated **RAG (Retrieval-Augmented Generation)** document indexing.
 - **🎭 Character Creator**: Build new NPCs on the fly with custom lore, roles, and locations.
 - **📚 Lore Folders**: Drop `.txt` or `.md` files into a character's `Documents/` folder to expand their knowledge instantly.

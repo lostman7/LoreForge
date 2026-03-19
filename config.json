@@ -19,14 +19,30 @@
     "elevenlabs_api_key": "",
     "openai_api_key": "",
     "fallback_to_system": true,
-    "voice_model_path": ""
+    "voice_model_path": "",
+    "character_speech_enabled": false,
+    "qwen3_model": "Qwen3-TTS-12Hz-0.6B-Base",
+    "qwen3_model_path": "./models/Qwen3-TTS-12Hz-0.6B-Base",
+    "qwen3_tokenizer_path": "./models/Qwen3-TTS-Tokenizer-12Hz",
+    "qwen3_models_dir": "./models",
+    "qwen3_voice": "",
+    "qwen3_language": "Auto",
+    "qwen3_instructions": "",
+    "qwen3_device": "auto",
+    "qwen3_dtype": "auto",
+    "qwen3_attention": "",
+    "qwen3_x_vector_only_mode": false
   },
   "stt": {
     "engine": "google",
     "language": "en-US",
     "huggingface_api_key": "",
     "timeout": 5,
-    "phrase_limit": 10
+    "phrase_limit": 10,
+    "ambient_noise_duration": 0.8,
+    "pause_threshold": 0.8,
+    "non_speaking_duration": 0.5,
+    "openai_model": "whisper-1"
   },
   "memory": {
     "max_floating_mb": 50,
