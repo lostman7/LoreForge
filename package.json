@@ -1,0 +1,65 @@
+{
+  "name": "loreforge",
+  "version": "1.0.0",
+  "description": "LoreForge - Immersive AI RPG Companion",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:backend": "python3 build_backend.py"
+  },
+  "build": {
+    "appId": "com.loreforge.app",
+    "productName": "LoreForge",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "renderer.js",
+      "style.css"
+    ],
+    "extraResources": [
+      {
+        "from": "src/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "Presets",
+        "to": "Presets",
+        "filter": [
+          "**/*"
+        ]
+      },
+      "config.json"
+    ],
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "RolePlaying"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    }
+  },
+  "devDependencies": {
+    "axios": "^1.13.6",
+    "electron": "^41.0.3",
+    "electron-builder": "^26.8.1"
+  }
+}

@@ -1,0 +1,16 @@
+PyQt6>=6.5.0
+ollama>=0.2.0
+speechrecognition>=3.10.0
+pyaudio>=0.2.13
+chromadb>=0.4.0
+sentence-transformers>=2.2.0
+pillow>=10.0.0
+requests>=2.31.0
+pyttsx3>=2.90  # Fallback local TTS, Piper via subprocess
+numpy>=1.24.0
+torch>=2.0.0  # For embeddings and potential model loading
+transformers>=4.30.0  # Optional for direct model integration
+playsound>=1.2.2  # For audio playback
+fastapi>=0.100.0
+uvicorn>=0.22.0
+python-multipart>=0.0.6

@@ -1,0 +1,58 @@
+{
+  "app": {
+    "name": "LoreForge",
+    "version": "1.0.0",
+    "theme": "dark",
+    "accent_color": "#ff4444",
+    "first_run": true
+  },
+  "ai": {
+    "backend": "ollama",
+    "model": "tinydolphin:1.1b",
+    "temperature": 0.8,
+    "max_tokens": 2048,
+    "gpu_acceleration": "auto",
+    "num_ctx": 4096
+  },
+  "tts": {
+    "engine": "piper",
+    "elevenlabs_api_key": "",
+    "openai_api_key": "",
+    "fallback_to_system": true,
+    "voice_model_path": ""
+  },
+  "stt": {
+    "engine": "google",
+    "language": "en-US",
+    "huggingface_api_key": "",
+    "timeout": 5,
+    "phrase_limit": 10
+  },
+  "memory": {
+    "max_floating_mb": 50,
+    "vector_db_path": "./memory_db",
+    "auto_cleanup": true
+  },
+  "logging": {
+    "level": "INFO",
+    "log_dir": "./Logs",
+    "max_log_files": 100
+  },
+  "apis": {
+    "elevenlabs": "",
+    "openai": "",
+    "huggingface": "",
+    "grok": "",
+    "claude": "",
+    "llama_cloud": "",
+    "lmstudio": "http://localhost:1234/v1",
+    "openrouter": ""
+  },
+  "ui": {
+    "window_width": 800,
+    "window_height": 600,
+    "font_size": 10,
+    "show_timestamps": true,
+    "auto_scroll": true
+  }
+}

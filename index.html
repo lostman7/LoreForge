@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LoreForge - Immersive RPG Chat</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Silkscreen:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body class="dark-theme">
+    <div id="app">
+        <!-- Start Screen -->
+        <div id="start-screen">
+            <div id="enter-button-container">
+                <img id="enter-sign" src="assets/images/enter_sign.png" alt="Enter" title="Click to Enter">
+            </div>
+        </div>
+
+        <!-- Dashboard / Hall of Heroes (Guild Hall) -->
+        <div id="dashboard-view" class="hidden">
+            <header class="dashboard-header">
+                <h1>Hall of Heroes</h1>
+                <p>Welcome to the Guild Hall</p>
+            </header>
+            
+            <!-- Persona Button -->
+            <button id="persona-btn" class="persona-btn" title="Set your Persona">👤 Persona</button>
+
+            <div id="hero-grid">
+                <!-- Character tiles will be injected here -->
+                <div class="hero-tile add-hero" id="add-hero-card">
+                    <div class="tile-icon">➕</div>
+                    <div class="tile-name">Create Hero</div>
+                </div>
+            </div>
+
+            <audio id="bg-music-start" loop>
+                <source src="assets/images/start screen.mp3" type="audio/mpeg">
+            </audio>
+            <audio id="bg-music-guild" loop>
+                <source src="assets/images/Guildhall.mp3" type="audio/mpeg">
+            </audio>
+        </div>
+
+        <!-- Sidebar (Hidden by default) -->
+        <aside id="sidebar" class="hidden">
+            <div class="sidebar-header">
+                <button id="back-to-dashboard" class="secondary small-btn">🏠 Home</button>
+                <h1>LoreForge</h1>
+            </div>
+            
+            <div class="sidebar-section">
+                <h3>🎭 Character</h3>
+                <div id="current-char-info">
+                    <img id="char-avatar-mini" src="" alt="">
+                    <span id="char-name-display">None</span>
+                </div>
+            </div>
+
+            <div class="sidebar-section">
+                <h3>👥 Players</h3>
+                <select id="player-select">
+                    <option value="Player 1">Player 1</option>
+                </select>
+                <button id="add-player-btn" class="secondary">➕ Add Player</button>
+            </div>
+
+
+            <div class="sidebar-section">
+                <h3>🎵 Controls</h3>
+                <button id="stt-btn" class="toggle-btn">🎤 Start STT</button>
+                <button id="index-docs-btn" class="secondary">📚 Index Documents</button>
+            </div>
+        </aside>
+
+        <!-- Main Chat Area (Hidden by default) -->
+        <main id="chat-container" class="hidden">
+            <div id="background-layer"></div>
+            <audio id="bg-music-char" loop></audio>
+            <div id="chat-overlay">
+                <!-- Back Button in Chat -->
+                <div id="chat-top-bar">
+                    <button id="chat-back-btn" class="chat-back-btn" title="Back to Guild Hall">⬅ Guild Hall</button>
+                    <!-- Weather Indicator -->
+                    <div id="weather-indicator" class="weather-indicator">
+                        <img id="weather-icon" src="" alt="Weather">
+                        <span id="weather-label"></span>
+                    </div>
+                </div>
+                
+                <!-- Backstory Audio Button -->
+                <button id="backstory-toggle-btn" class="backstory-btn hidden">📖 Backstory</button>
+
+                <div id="chat-messages"></div>
+                
+                <div id="input-area">
+                    <textarea id="message-input" placeholder="Type your message... (Ctrl+Enter to send)"></textarea>
+                    <button id="send-btn">📤 Send</button>
+                </div>
+            </div>
+        </main>
+
+        <!-- Door Transition Video -->
+        <div id="door-transition-overlay" class="hidden">
+            <video id="door-video" preload="auto">
+                <source src="assets/images/Doorload.mp4" type="video/mp4">
+            </video>
+        </div>
+
+        <!-- Modals -->
+        <div id="modal-overlay" class="hidden">
+            <!-- Create Character Modal -->
+            <div id="character-modal" class="modal hidden">
+                <h2>Create New Character</h2>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="char-name" placeholder="e.g. Thompson">
+                </div>
+                <div class="form-group">
+                    <label>Role</label>
+                    <input type="text" id="char-role" placeholder="e.g. Grumpy Shopkeeper">
+                </div>
+                <div class="form-group">
+                    <label>Location</label>
+                    <input type="text" id="char-location" placeholder="e.g. New Veridia">
+                </div>
+                <div class="form-group">
+                    <label>Description/Lore</label>
+                    <textarea id="char-desc" placeholder="Backstory and personality..."></textarea>
+                </div>
+                <div class="form-group">
+                    <label>🖼️ Avatar Image (Character Portrait)</label>
+                    <input type="file" id="char-avatar-upload" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>🏞️ Background Image (Chatroom Background)</label>
+                    <input type="file" id="char-bg-upload" accept="image/*">
+                </div>
+                <div class="form-group">
+                    <label>🎵 Background Music (.mp3)</label>
+                    <input type="file" id="char-music-upload" accept="audio/mpeg,audio/mp3">
+                </div>
+                <div class="form-group">
+                    <label>📚 RAG Data (Documents/Text)</label>
+                    <input type="file" id="char-rag-upload">
+                </div>
+                <div class="form-group">
+                    <label>🔊 Backstory Audio (.mp3)</label>
+                    <input type="file" id="char-backstory-audio-upload" accept="audio/mpeg,audio/mp3">
+                </div>
+                <div class="modal-actions">
+                    <button id="save-char-btn">💾 Save Character</button>
+                    <button class="cancel-btn">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Player Persona Modal -->
+            <div id="guild-hall" class="screen hidden">
+                <div class="guild-hall-header">
+                    <h1>The Guild Hall</h1>
+                    <button id="refresh-presets-btn" class="refresh-btn">🔄 Refresh Characters</button>
+                </div>
+                <div id="hero-grid" class="hero-grid">
+                    <!-- Character tiles will be injected here -->
+                    <div class="hero-tile add-hero" id="add-hero-card">
+                        <div class="tile-icon">➕</div>
+                        <div class="tile-name">Create Hero</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Player Persona Modal (now separate from Guild Hall) -->
+            <div id="persona-modal" class="modal hidden">
+                <h2>👤 Your Persona</h2>
+                <div class="form-group">
+                    <label>Name</label>
+                    <input type="text" id="persona-name" placeholder="Enter your character name">
+                </div>
+                <div class="form-group">
+                    <label>🖼️ Avatar</label>
+                    <input type="file" id="persona-avatar-upload" accept="image/*">
+                    <div id="persona-avatar-preview" class="avatar-preview"></div>
+                </div>
+                <div class="form-group">
+                    <label>Backstory</label>
+                    <textarea id="persona-backstory" placeholder="Who are you? What's your story?"></textarea>
+                </div>
+                <h3>📊 Stats</h3>
+                <div class="stats-grid">
+                    <div class="form-group stat-field">
+                        <label>Level</label>
+                        <input type="number" id="persona-level" value="1" min="1" max="100">
+                    </div>
+                    <div class="form-group stat-field">
+                        <label>Strength</label>
+                        <input type="number" id="persona-strength" value="10" min="1" max="100">
+                    </div>
+                    <div class="form-group stat-field">
+                        <label>Dexterity</label>
+                        <input type="number" id="persona-dexterity" value="10" min="1" max="100">
+                    </div>
+                    <div class="form-group stat-field">
+                        <label>Intelligence</label>
+                        <input type="number" id="persona-intelligence" value="10" min="1" max="100">
+                    </div>
+                    <div class="form-group stat-field">
+                        <label>Charisma</label>
+                        <input type="number" id="persona-charisma" value="10" min="1" max="100">
+                    </div>
+                    <div class="form-group stat-field">
+                        <label>Wisdom</label>
+                        <input type="number" id="persona-wisdom" value="10" min="1" max="100">
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button id="save-persona-btn">💾 Save Persona</button>
+                    <button class="cancel-btn">Cancel</button>
+                </div>
+            </div>
+
+            <!-- Config Modal -->
+            <div id="config-modal" class="modal hidden">
+                <h2>AI & API Settings</h2>
+                <div class="form-group">
+                    <label>AI Backend</label>
+                    <select id="ai-backend">
+                        <option value="ollama">Ollama (Local)</option>
+                        <option value="openai">OpenAI (GPT)</option>
+                        <option value="claude">Claude (Anthropic)</option>
+                        <option value="grok">Grok (xAI)</option>
+                        <option value="llama_cloud">Llama Cloud</option>
+                        <option value="lmstudio">LM Studio (Local)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>AI Model (Ollama)</label>
+                    <select id="model-select">
+                        <option value="">Select a model...</option>
+                    </select>
+                    <small>Select an installed Ollama model to use for character AI.</small>
+                </div>
+                <div class="form-group">
+                    <label>Context Length (Memory Window)</label>
+                    <input type="number" id="ai-num-ctx" value="4096" min="1024" max="128000" step="1024">
+                </div>
+                <div class="form-group">
+                    <label>Resolution Control</label>
+                    <button id="toggle-fullscreen-btn" class="primary-btn off">Full Screen: <span id="fullscreen-status">OFF</span></button>
+                    <small>Windowed: 1280x720 | Full Screen: 1536x1024</small>
+                </div>
+                <h3>API Keys</h3>
+                <div class="form-group">
+                    <label>OpenAI Key</label>
+                    <input type="password" id="key-openai">
+                </div>
+                <div class="form-group">
+                    <label>Claude Key</label>
+                    <input type="password" id="key-claude">
+                </div>
+                <div class="form-group">
+                    <label>Grok Key</label>
+                    <input type="password" id="key-grok">
+                </div>
+                <div class="form-group">
+                    <label>Llama Cloud Key</label>
+                    <input type="password" id="key-llama-cloud">
+                </div>
+                <div class="modal-actions">
+                    <button id="save-config-btn">💾 Save Settings</button>
+                    <button class="cancel-btn">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Global Settings Button -->
+        <button id="config-btn" class="config-btn-global" title="Settings">⚙️</button>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>
