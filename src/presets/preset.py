@@ -10,12 +10,20 @@ from pathlib import Path
 @dataclass
 class VoiceConfig:
     """Voice configuration for TTS."""
-    engine: str = "piper"  # piper, elevenlabs, openai, system
+    engine: str = "piper"  # piper, elevenlabs, openai, qwen3, system
     default_voice_engine: str = "local"  # local or cloud
     model_path: Optional[str] = None
     speaker_id: Optional[int] = None
     elevenlabs_voice_id: Optional[str] = None
     openai_voice: Optional[str] = None
+    qwen_voice: Optional[str] = None
+    qwen_model: Optional[str] = None
+    qwen_model_path: Optional[str] = None
+    qwen_tokenizer_path: Optional[str] = None
+    qwen_language: Optional[str] = None
+    qwen_instructions: Optional[str] = None
+    qwen_reference_audio: Optional[str] = None
+    qwen_reference_text: Optional[str] = None
     sample_file: Optional[str] = None  # For pre-recorded samples
 
 
@@ -101,6 +109,12 @@ class Preset:
                     voice_config.engine = cloud_data.get('engine', 'elevenlabs')
                     voice_config.elevenlabs_voice_id = cloud_data.get('elevenlabs_voice_id')
                     voice_config.openai_voice = cloud_data.get('openai_voice')
+                    voice_config.qwen_voice = cloud_data.get('qwen_voice')
+                    voice_config.qwen_model = cloud_data.get('qwen_model')
+                    voice_config.qwen_model_path = cloud_data.get('qwen_model_path')
+                    voice_config.qwen_tokenizer_path = cloud_data.get('qwen_tokenizer_path')
+                    voice_config.qwen_language = cloud_data.get('qwen_language')
+                    voice_config.qwen_instructions = cloud_data.get('qwen_instructions')
 
         # Override with main config if present
         if 'voice' in config:
@@ -111,6 +125,22 @@ class Preset:
                 voice_config.elevenlabs_voice_id = voice_data['elevenlabs_voice_id']
             if 'openai_voice' in voice_data:
                 voice_config.openai_voice = voice_data['openai_voice']
+            if 'qwen_voice' in voice_data:
+                voice_config.qwen_voice = voice_data['qwen_voice']
+            if 'qwen_model' in voice_data:
+                voice_config.qwen_model = voice_data['qwen_model']
+            if 'qwen_model_path' in voice_data:
+                voice_config.qwen_model_path = voice_data['qwen_model_path']
+            if 'qwen_tokenizer_path' in voice_data:
+                voice_config.qwen_tokenizer_path = voice_data['qwen_tokenizer_path']
+            if 'qwen_language' in voice_data:
+                voice_config.qwen_language = voice_data['qwen_language']
+            if 'qwen_instructions' in voice_data:
+                voice_config.qwen_instructions = voice_data['qwen_instructions']
+            if 'qwen_reference_audio' in voice_data:
+                voice_config.qwen_reference_audio = voice_data['qwen_reference_audio']
+            if 'qwen_reference_text' in voice_data:
+                voice_config.qwen_reference_text = voice_data['qwen_reference_text']
 
         # Load character metadata
         character_name = config.get('character_name', name)
@@ -136,6 +166,26 @@ class Preset:
                     background_frames = [str(background_path)]
 
         avatar_animation = config.get('avatar_animation', False)
+
+        # Detect Qwen voice clone reference files
+        reference_audio_candidates = [
+            folder_path / 'voice_reference.wav',
+            folder_path / 'voice' / 'voice_reference.wav',
+            folder_path / 'voice' / 'local' / 'voice_reference.wav',
+        ]
+        reference_text_candidates = [
+            folder_path / 'voice_reference.txt',
+            folder_path / 'voice' / 'voice_reference.txt',
+            folder_path / 'voice' / 'local' / 'voice_reference.txt',
+        ]
+        for candidate in reference_audio_candidates:
+            if candidate.exists():
+                voice_config.qwen_reference_audio = str(candidate)
+                break
+        for candidate in reference_text_candidates:
+            if candidate.exists():
+                voice_config.qwen_reference_text = str(candidate)
+                break
 
         # Detect character music file (<FolderName>.mp3)
         music_file = folder_path / f"{name}.mp3"

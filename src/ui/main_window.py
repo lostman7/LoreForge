@@ -22,8 +22,8 @@ from src.audio.stt_manager import STTManager
 from src.memory.memory_manager import MemoryManager
 from src.ai.ai_model import AIModel
 from src.session_logging.session_logger import SessionLogger
-from options_dialog import OptionsDialog
-from simple_character_dialog import SimpleCharacterDialog
+from src.ui.options_dialog import OptionsDialog
+from src.ui.simple_character_dialog import SimpleCharacterDialog
 
 
 class PresetComboBox(QComboBox):
@@ -105,6 +105,7 @@ class ChatBubble(QFrame):
 
 class MainWindow(QMainWindow):
     """Main application window."""
+    voice_input_received = pyqtSignal(str)
 
     def __init__(self, initial_character: Optional[str] = None, initial_player: Optional[str] = None):
         super().__init__()
@@ -120,6 +121,8 @@ class MainWindow(QMainWindow):
         self.memory_manager = MemoryManager(self.config)
         self.ai_model = AIModel(self.config)
         self.session_logger = SessionLogger()
+        self.voice_input_received.connect(self.apply_voice_input)
+        self.character_speech_enabled = self.config.get('tts', {}).get('character_speech_enabled', False)
 
         # Set up fallback assets
         self.setup_fallback_assets()
@@ -244,6 +247,16 @@ class MainWindow(QMainWindow):
         self.stt_toggle.clicked.connect(self.toggle_stt)
         audio_layout.addWidget(self.stt_toggle)
 
+        self.character_speech_toggle = QPushButton()
+        self.character_speech_toggle.setCheckable(True)
+        self.character_speech_toggle.setChecked(self.character_speech_enabled)
+        self.character_speech_toggle.clicked.connect(self.toggle_character_speech)
+        self.character_speech_toggle.setToolTip(
+            "Uses the local Qwen3-TTS model with voice_reference.wav and voice_reference.txt from the selected character."
+        )
+        audio_layout.addWidget(self.character_speech_toggle)
+        self.update_character_speech_button()
+
         sidebar_layout.addWidget(audio_group)
 
         # Character selection
@@ -358,6 +371,24 @@ class MainWindow(QMainWindow):
         """)
         input_layout.addWidget(self.input_field)
 
+        self.voice_button = QPushButton("🎤")
+        self.voice_button.clicked.connect(self.toggle_voice_input)
+        self.voice_button.setFixedWidth(48)
+        self.voice_button.setStyleSheet("""
+            QPushButton {
+                background-color: #5b4b8a;
+                border: none;
+                border-radius: 5px;
+                padding: 10px;
+                color: white;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #6c5da0;
+            }
+        """)
+        input_layout.addWidget(self.voice_button)
+
         # Send button
         self.send_button = QPushButton("📤 Send")
         self.send_button.clicked.connect(self.send_message)
@@ -445,20 +476,57 @@ class MainWindow(QMainWindow):
         self.tts_toggle.setText("🔊 TTS: ON" if enabled else "🔇 TTS: OFF")
         # Store preference
         self.config['tts']['enabled'] = enabled
+        self.save_config()
 
     def toggle_stt(self):
         """Toggle STT on/off."""
         enabled = self.stt_toggle.isChecked()
-        self.stt_toggle.setText("🎤 STT: ON" if enabled else "🔇 STT: OFF")
+        if enabled:
+            started = self.stt_manager.start_listening(self.handle_voice_input)
+            if not started:
+                self.stt_toggle.setChecked(False)
+                self.stt_toggle.setText("🔇 STT: OFF")
+                self.voice_button.setText("🎤")
+                QMessageBox.warning(
+                    self,
+                    "STT Unavailable",
+                    "Speech-to-text could not start. Check your microphone and local STT dependencies."
+                )
+                return
+            self.stt_toggle.setText("🎤 STT: ON")
+            self.voice_button.setText("⏹️")
+        else:
+            self.stt_manager.stop_listening()
+            self.stt_toggle.setText("🔇 STT: OFF")
+            self.voice_button.setText("🎤")
+
+    def toggle_character_speech(self):
+        """Toggle offline character speech generation."""
+        enabled = self.character_speech_toggle.isChecked()
 
         if enabled:
-            self.voice_button.setText("⏹️")
-            # Start STT listening
-            self.stt_manager.start_listening(self.on_voice_input)
-        else:
-            self.voice_button.setText("🎤")
-            # Stop STT listening
-            self.stt_manager.stop_listening()
+            can_speak, message = self.tts_manager.can_speak_with_qwen3(self.current_preset)
+            if not can_speak:
+                self.character_speech_toggle.setChecked(False)
+                self.character_speech_enabled = False
+                self.update_character_speech_button()
+                QMessageBox.warning(
+                    self,
+                    "Character Speech Unavailable",
+                    message
+                )
+                return
+
+        self.character_speech_enabled = enabled
+        self.config.setdefault('tts', {})['character_speech_enabled'] = enabled
+        self.save_config()
+        self.update_character_speech_button()
+
+    def update_character_speech_button(self):
+        """Refresh the sidebar button for offline character speech."""
+        enabled = self.character_speech_toggle.isChecked() if hasattr(self, 'character_speech_toggle') else False
+        label = "🗣 Character Speech: ON" if enabled else "🗣 Character Speech: OFF"
+        self.character_speech_toggle.setText(label)
 
     def add_player(self):
         """Add a new player to the game."""
@@ -554,6 +622,7 @@ class MainWindow(QMainWindow):
             self.update_background()
             self.memory_manager.load_preset_memory(preset_name, self.current_player)
             self.session_logger.start_session(preset_name, self.current_player)
+            self.update_character_speech_button()
 
             # Update window title with character info
             if self.current_preset:
@@ -649,9 +718,11 @@ class MainWindow(QMainWindow):
             # Add AI response to chat
             self.add_chat_bubble(response, is_user=False, avatar_path=self.current_preset.avatar_path)
 
-            # Play TTS if enabled
-            if self.tts_toggle.isChecked():
-                self.tts_manager.speak(response, self.current_preset.voice_config)
+            if self.character_speech_enabled:
+                qwen_voice = self.tts_manager.build_character_qwen_voice_config(self.current_preset)
+                self.tts_manager.speak(response, qwen_voice, self.current_preset)
+            elif self.tts_toggle.isChecked():
+                self.tts_manager.speak(response, self.current_preset.voice_config, self.current_preset)
 
             # Update memory with player context
             self.memory_manager.add_interaction(enhanced_message, response)
@@ -677,15 +748,36 @@ class MainWindow(QMainWindow):
         """Toggle voice input mode."""
         if self.stt_manager.is_listening:
             self.stt_manager.stop_listening()
+            self.stt_toggle.setChecked(False)
+            self.stt_toggle.setText("🔇 STT: OFF")
             self.voice_button.setText("🎤")
         else:
-            self.stt_manager.start_listening(self.on_voice_input)
+            started = self.stt_manager.start_listening(self.handle_voice_input)
+            if not started:
+                self.stt_toggle.setChecked(False)
+                self.stt_toggle.setText("🔇 STT: OFF")
+                self.voice_button.setText("🎤")
+                QMessageBox.warning(
+                    self,
+                    "STT Unavailable",
+                    "Speech-to-text could not start. Check your microphone and local STT dependencies."
+                )
+                return
+            self.stt_toggle.setChecked(True)
+            self.stt_toggle.setText("🎤 STT: ON")
             self.voice_button.setText("⏹️")
 
-    def on_voice_input(self, text: str):
-        """Handle voice input."""
+    def handle_voice_input(self, text: str):
+        """Handle voice input from the background STT thread."""
+        self.voice_input_received.emit(text)
+
+    def apply_voice_input(self, text: str):
+        """Apply voice input on the UI thread."""
         self.input_field.setPlainText(text)
         self.voice_button.setText("🎤")
+        self.stt_toggle.setChecked(False)
+        self.stt_toggle.setText("🔇 STT: OFF")
+        self.stt_manager.stop_listening()
 
     def setup_hotkeys(self):
         """Set up keyboard shortcuts."""
@@ -720,9 +812,18 @@ class MainWindow(QMainWindow):
         if dialog.exec() == QDialog.DialogCode.Accepted:
             # Reload config
             self.config = self.load_config()
+            self.character_speech_enabled = self.config.get('tts', {}).get('character_speech_enabled', False)
+            self.character_speech_toggle.setChecked(self.character_speech_enabled)
+            self.update_character_speech_button()
             # Apply theme changes
             self.apply_theme()
             # Could add more dynamic updates here
+
+    def save_config(self):
+        """Persist the active configuration to disk."""
+        config_path = Path(__file__).parent.parent.parent / 'config.json'
+        with open(config_path, 'w', encoding='utf-8') as f:
+            json.dump(self.config, f, indent=2)
 
     def show_about(self):
         """Show about dialog."""
@@ -733,7 +834,7 @@ class MainWindow(QMainWindow):
             "Immersive RPG AI Chat Client\n\n"
             "Features:\n"
             "• Local AI models with Ollama\n"
-            "• Text-to-Speech with Piper/ElevenLabs\n"
+            "• Text-to-Speech with Piper and offline Qwen3-TTS\n"
             "• Speech-to-Text input\n"
             "• Persistent character memory\n"
             "• Customizable presets\n\n"
