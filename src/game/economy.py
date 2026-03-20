@@ -245,3 +245,21 @@ def summarize_equipment(equipment: Dict[str, Dict[str, Any] | None]) -> str:
         item = equipment.get(slot)
         parts.append(f"{label}: {item['name'] if item else 'empty'}")
     return "; ".join(parts)
+
+
+def get_thompson_stock() -> List[Dict[str, Any]]:
+    """Return inventory exclusively for Thompson (Weapons/Armor)."""
+    return [
+        make_item("Iron Broadsword", "weapon", 60, weight=3, slot="main_hand", description="A sturdy iron blade."),
+        make_item("Steel Plate", "armor", 200, weight=5, slot="over_torso", description="High-grade steel protection."),
+        make_item("Wooden Buckler", "armor", 40, weight=2, slot="off_hand", description="A small wooden shield."),
+    ]
+
+
+def get_mildred_stock() -> List[Dict[str, Any]]:
+    """Return inventory exclusively for Mildred (Potions)."""
+    return [
+        make_item("Health Potion", "consumable", 30, weight=1, stackable=True, description="Restores 50 HP."),
+        make_item("Stamina Draught", "consumable", 45, weight=1, stackable=True, description="Restores stamina."),
+        make_item("Mana Ether", "consumable", 60, weight=1, stackable=True, description="Restores magical energy."),
+    ]

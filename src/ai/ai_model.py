@@ -72,9 +72,17 @@ class AIModel:
             return f"Backend Error ({self.backend}): {str(e)}"
 
     def _build_system_prompt(self, preset: Preset, context: str, extra_context: dict = None) -> str:
+        # Get affinity from player data
+        affinity_val = 0
+        if extra_context and 'persona' in extra_context:
+            stats = extra_context['persona'].get('stats', {})
+            # This logic assumes affinity is stored in a way we can extract or pass
+            affinity_val = extra_context.get('current_affinity', 0)
+
         prompt = f"""You are roleplaying as {preset.character_name}.
 Role: {preset.job_title}
 Location: {preset.location}
+Affinity with Player: {affinity_val}/100
 Backstory: {preset.profile_text}
 
 Immersive Memory:

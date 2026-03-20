@@ -340,9 +340,7 @@ function getPersonaLevel() {
 }
 
 function getMonsterLevelForPlayer(playerLevel) {
-    if (playerLevel >= 6) return 3;
-    if (playerLevel >= 4) return 2;
-    return 1;
+    return Math.ceil(playerLevel / 2.0);
 }
 
 function appendBattleLog(text, type = 'system') {

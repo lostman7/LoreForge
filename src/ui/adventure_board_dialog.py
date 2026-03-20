@@ -162,102 +162,116 @@ class AdventureBoardDialog(QDialog):
             self.parent().voice_input_received.emit(battle.get_result_summary())
 
     def init_persona_tab(self):
-        """Initialize the new Character Sheet dashboard."""
+        """Initialize the single-hero Character Sheet dashboard."""
         layout = QVBoxLayout(self.persona_tab)
 
-        # Profile Switcher
-        profile_group = QGroupBox("Profile")
-        profile_layout = QFormLayout(profile_group)
+        # Profile Header
+        header_group = QGroupBox("Hero Profile")
+        header_layout = QHBoxLayout(header_group)
 
-        self.hero_dropdown = QComboBox()
-        self.hero_dropdown.currentTextChanged.connect(self.switch_hero)
-        profile_layout.addRow("Active Hero:", self.hero_dropdown)
+        self.avatar_label = QLabel("👤")
+        self.avatar_label.setFixedSize(64, 64)
+        self.avatar_label.setStyleSheet("font-size: 48px; background: #333; border: 1px solid #555; border-radius: 4px;")
+        self.avatar_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        header_layout.addWidget(self.avatar_label)
 
-        self.player_name_edit = QLineEdit()
-        self.player_name_edit.textChanged.connect(self.update_player_name)
-        profile_layout.addRow("Player Name:", self.player_name_edit)
+        name_layout = QVBoxLayout()
+        self.player_name_label = QLabel(self.player.name)
+        self.player_name_label.setStyleSheet("font-size: 18px; font-weight: bold; color: #f0c674;")
+        name_layout.addWidget(self.player_name_label)
 
-        layout.addWidget(profile_group)
+        self.profession_label = QLabel(f"{self.player.race} {self.player.profession}")
+        self.profession_label.setStyleSheet("color: #aaa; italic;")
+        name_layout.addWidget(self.profession_label)
+        header_layout.addLayout(name_layout)
+        header_layout.addStretch()
+
+        layout.addWidget(header_group)
 
         # Progression Stats
-        stats_group = QGroupBox("Progression")
-        stats_layout = QFormLayout(stats_group)
+        stats_group = QGroupBox("Attributes & Wealth")
+        stats_layout = QGridLayout(stats_group)
 
         self.level_label = QLabel("Level: 1")
+        self.speed_label = QLabel("Speed: 10")
         self.gold_label = QLabel("Gold: 0g")
+
         self.xp_bar = QProgressBar()
         self.xp_bar.setFormat("XP: %v / %m")
+        self.xp_bar.setFixedHeight(15)
 
-        stats_layout.addRow(self.level_label)
-        stats_layout.addRow(self.gold_label)
-        stats_layout.addRow(self.xp_bar)
+        stats_layout.addWidget(self.level_label, 0, 0)
+        stats_layout.addWidget(self.speed_label, 0, 1)
+        stats_layout.addWidget(self.gold_label, 1, 0)
+        stats_layout.addWidget(self.xp_bar, 2, 0, 1, 2)
 
         layout.addWidget(stats_group)
 
         # Equipment Dropdowns
-        equip_group = QGroupBox("Equipment")
+        equip_group = QGroupBox("Equipped Gear")
         equip_layout = QFormLayout(equip_group)
 
+        self.head_dropdown = QComboBox()
+        self.chest_dropdown = QComboBox()
         self.weapon_dropdown = QComboBox()
-        self.armor_dropdown = QComboBox()
         self.accessory_dropdown = QComboBox()
 
         # Connect slots
+        self.head_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("head", self.head_dropdown))
+        self.chest_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("over_torso", self.chest_dropdown))
         self.weapon_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("main_hand", self.weapon_dropdown))
-        self.armor_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("over_torso", self.armor_dropdown))
         self.accessory_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("ring", self.accessory_dropdown))
 
+        equip_layout.addRow("Head:", self.head_dropdown)
+        equip_layout.addRow("Chest:", self.chest_dropdown)
         equip_layout.addRow("Weapon:", self.weapon_dropdown)
-        equip_layout.addRow("Armor:", self.armor_dropdown)
         equip_layout.addRow("Accessory:", self.accessory_dropdown)
 
         layout.addWidget(equip_group)
 
         # Master Inventory List
         self.inventory_list = QListWidget()
-        layout.addWidget(QLabel("Master Inventory:"))
+        layout.addWidget(QLabel("Hero Inventory:"))
         layout.addWidget(self.inventory_list)
 
-        self.refresh_hero_list()
-
-    def refresh_hero_list(self):
-        """Reload the list of saved heroes."""
-        from src.players.player_manager import PlayerManager
-        pm = self.parent().player_manager
-        self.hero_dropdown.blockSignals(True)
-        self.hero_dropdown.clear()
-        self.hero_dropdown.addItems(pm.get_player_names())
-        self.hero_dropdown.setCurrentText(self.player.name)
-        self.hero_dropdown.blockSignals(False)
-
-    def switch_hero(self, hero_name):
-        """Switch the active player profile."""
-        if not hero_name: return
-        pm = self.parent().player_manager
-        new_player = pm.load_player(hero_name)
-        if new_player:
-            self.player = new_player
-            self.load_content()
-            # Notify parent window
-            self.parent().on_player_changed(hero_name)
-
-    def update_player_name(self, name):
-        """Update the player's name and persist."""
-        self.player.name = name
-        self.parent().player_manager.save_player(self.player)
 
     def update_equipment(self, slot, dropdown):
-        """Handle equipment change from dropdown."""
+        """Handle equipment change from dropdown and apply stat buffs."""
         from src.game.economy import equip_item, unequip_item
         item_name = dropdown.currentText()
 
-        if item_name == "None":
+        # Remove old item buffs before equipping new one
+        # This implementation assumes buffs are calculated dynamically during combat
+        # or stored as a 'base_stats' vs 'current_stats'
+
+        if item_name == "None" or item_name == "Unequipped":
             unequip_item(self.player, slot)
         else:
             equip_item(self.player, item_name, slot)
 
         self.parent().player_manager.save_player(self.player)
         self.refresh_inventory_display()
+        self.refresh_stats_display()
+
+    def refresh_stats_display(self):
+        """Update progression and attribute readouts."""
+        stats = self.player.reputation.get("_stats", {})
+        self.level_label.setText(f"Level: {stats.get('level', 1)}")
+
+        # Calculate derived speed with gear buffs
+        base_speed = stats.get("speed", 10)
+        bonus_speed = 0
+        for item in self.player.equipment.values():
+            if item:
+                bonus_speed += item.get("speed_bonus", 0)
+
+        self.speed_label.setText(f"Speed: {base_speed + bonus_speed}")
+        self.gold_label.setText(f"Gold: {self.player.gold}g")
+
+        xp = stats.get('xp', 0)
+        next_level_xp = stats.get('level', 1) * 100
+        self.xp_bar.setMaximum(next_level_xp)
+        self.xp_bar.setValue(xp)
 
     def load_content(self):
         arena = self.player.arena_record
@@ -282,51 +296,39 @@ class AdventureBoardDialog(QDialog):
             )
 
         # Update Character Sheet
-        self.player_name_edit.setText(self.player.name)
-        stats = self.player.reputation.get("_stats", {})
-        self.level_label.setText(f"Level: {stats.get('level', 1)}")
-        self.gold_label.setText(f"Gold: {self.player.gold}g")
-
-        xp = stats.get('xp', 0)
-        next_level_xp = stats.get('level', 1) * 100 # Simple logic
-        self.xp_bar.setMaximum(next_level_xp)
-        self.xp_bar.setValue(xp)
-
+        self.player_name_label.setText(self.player.name)
+        self.profession_label.setText(f"{self.player.race} {self.player.profession}")
+        self.refresh_stats_display()
         self.refresh_equipment_dropdowns()
         self.refresh_inventory_display()
 
     def refresh_equipment_dropdowns(self):
-        """Populate equipment dropdowns from inventory."""
-        self.weapon_dropdown.blockSignals(True)
-        self.armor_dropdown.blockSignals(True)
-        self.accessory_dropdown.blockSignals(True)
+        """Populate equipment dropdowns from inventory with dynamic filtering."""
+        combos = {
+            "head": self.head_dropdown,
+            "over_torso": self.chest_dropdown,
+            "main_hand": self.weapon_dropdown,
+            "ring": self.accessory_dropdown
+        }
 
-        self.weapon_dropdown.clear()
-        self.armor_dropdown.clear()
-        self.accessory_dropdown.clear()
+        for slot, combo in combos.items():
+            combo.blockSignals(True)
+            combo.clear()
+            combo.addItem("Unequipped")
 
-        self.weapon_dropdown.addItem("None")
-        self.armor_dropdown.addItem("None")
-        self.accessory_dropdown.addItem("None")
+            # Filter inventory by matching slot or category
+            for item in self.player.inventory:
+                if item.get("slot") == slot or (slot == "ring" and item.get("category") == "accessory"):
+                    combo.addItem(item["name"])
 
-        for item in self.player.inventory:
-            cat = item.get("category", "")
-            if cat == "weapon":
-                self.weapon_dropdown.addItem(item["name"])
-            elif cat == "armor":
-                self.armor_dropdown.addItem(item["name"])
-            elif cat == "accessory" or cat == "ring":
-                self.accessory_dropdown.addItem(item["name"])
+            # Set current equipped
+            current = self.player.equipment.get(slot)
+            if current:
+                combo.setCurrentText(current["name"])
+            else:
+                combo.setCurrentIndex(0)
 
-        # Set current equipped
-        eq = self.player.equipment
-        if eq.get("main_hand"): self.weapon_dropdown.setCurrentText(eq["main_hand"]["name"])
-        if eq.get("over_torso"): self.armor_dropdown.setCurrentText(eq["over_torso"]["name"])
-        if eq.get("ring"): self.accessory_dropdown.setCurrentText(eq["ring"]["name"])
-
-        self.weapon_dropdown.blockSignals(False)
-        self.armor_dropdown.blockSignals(False)
-        self.accessory_dropdown.blockSignals(False)
+            combo.blockSignals(False)
 
     def refresh_inventory_display(self):
         """Refresh the master inventory list."""
