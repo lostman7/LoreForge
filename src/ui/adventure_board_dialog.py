@@ -80,7 +80,77 @@ class AdventureBoardDialog(QDialog):
             self.scroll_btn.clicked.connect(self.start_monster_encounter)
 
         self.scroll_layout.addWidget(self.scroll_btn)
+
+        # Merchant Button (Satchel)
+        self.merchant_btn = QPushButton()
+        # Fallback to text if satchel icon missing or just use an icon
+        self.merchant_btn.setText("🛍️") # Use an emoji as a simple placeholder icon
+        self.merchant_btn.setFixedSize(70, 70)
+        self.merchant_btn.setStyleSheet("font-size: 32px; border: none; background: transparent;")
+        self.merchant_btn.setToolTip("Visit the Guild Merchant!")
+        self.merchant_btn.clicked.connect(self.visit_merchant)
+        self.scroll_layout.addWidget(self.merchant_btn)
+
         layout.addLayout(self.scroll_layout)
+
+    def visit_merchant(self):
+        """Placeholder for a simple merchant interaction."""
+        from src.ui.inventory_dialog import InventoryDialog
+        from src.presets.preset import Preset, VoiceConfig
+
+        # Create a dummy 'Guild Merchant' preset for the shop interface
+        merchant_preset = Preset(
+            name="Guild Merchant",
+            profile_text="The Guild Merchant is a jolly soul who sells essential supplies to adventurers.",
+            character_name="Guild Merchant",
+            config={
+                "economy": {
+                    "gold": 5000,
+                    "pricing_style": "standard guild rates",
+                    "shop_inventory": [
+                        {
+                            "name": "Minor Healing Potion",
+                            "category": "consumable",
+                            "price": 40,
+                            "quantity": 10,
+                            "weight": 1,
+                            "stackable": True,
+                            "description": "A small red potion that restores 20 HP.",
+                            "rarity": "common"
+                        },
+                        {
+                            "name": "XP Insight Tome",
+                            "category": "consumable",
+                            "price": 150,
+                            "quantity": 2,
+                            "weight": 2,
+                            "stackable": False,
+                            "description": "A dusty book that grants a small boost to XP.",
+                            "rarity": "uncommon"
+                        },
+                        {
+                            "name": "Traveler's Bread",
+                            "category": "consumable",
+                            "price": 5,
+                            "quantity": 20,
+                            "weight": 1,
+                            "stackable": True,
+                            "description": "Hard bread that keeps well on the road.",
+                            "rarity": "common"
+                        }
+                    ]
+                }
+            }
+        )
+
+        # Use InventoryDialog in shop mode
+        dialog = InventoryDialog(self.player, merchant_preset, self.parent().player_manager, self)
+        dialog.tabs.setCurrentIndex(3) # Switch to Shop tab
+        dialog.exec()
+
+        # Persist player state after shopping
+        self.parent().player_manager.save_player(self.player)
+        self.parent().update_gold_display()
 
     def start_monster_encounter(self):
         from src.ui.battle_dialog import BattleDialog

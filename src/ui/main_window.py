@@ -969,8 +969,21 @@ class MainWindow(QMainWindow):
     def apply_voice_input(self, text: str):
         """Apply voice input on the UI thread."""
         # Check if this is a battle result log (system message)
-        if text.startswith("You defeated"):
+        if "You defeated" in text and "Gold!" in text:
             self.add_chat_bubble(text, is_user=False, is_system=True)
+
+            # Trigger TTS for the immersive combat narrative if enabled
+            if self.tts_toggle.isChecked() or self.character_speech_enabled:
+                # Use the narrator/character voice for the battle summary
+                voice_config = None
+                if self.current_preset:
+                    if self.character_speech_enabled:
+                        voice_config = self.tts_manager.build_character_qwen_voice_config(self.current_preset)
+                    else:
+                        voice_config = self.current_preset.voice_config
+
+                if voice_config:
+                    self.tts_manager.speak(text, voice_config, self.current_preset)
             return
 
         self.input_field.setPlainText(text)

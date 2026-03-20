@@ -6,7 +6,12 @@ from PyQt6.QtGui import QPixmap
 import random
 import math
 from pathlib import Path
-from src.game.content import get_monster_pool, calculate_monster_level, ASSET_DIR
+from src.game.content import (
+    get_monster_pool,
+    calculate_monster_level,
+    ASSET_DIR,
+    get_battle_narrative
+)
 from src.game.economy import make_item
 
 class BattleDialog(QDialog):
@@ -35,6 +40,7 @@ class BattleDialog(QDialog):
         self.gold_reward = random.randint(self.gold_min, self.gold_max) + (self.monster_level - 1) * 3
 
         self.monster_asset = monster_template["asset"]
+        self.battle_result_narrative = ""
 
         self.init_ui()
 
@@ -98,11 +104,19 @@ class BattleDialog(QDialog):
         stats["xp"] = current_xp + self.xp_reward
         self.player.reputation["_stats"] = stats
 
-        msg = f"Victory! You defeated a Level {self.monster_level} {self.monster_name}!\n"
+        self.battle_result_narrative = get_battle_narrative(self.monster_name, victory=True)
+
+        msg = f"Victory! You defeated a Level {self.monster_level} {self.monster_name}!\n\n"
+        msg += f"{self.battle_result_narrative}\n\n"
         msg += f"Rewards: {self.gold_reward} Gold and {self.xp_reward} XP."
 
         QMessageBox.information(self, "Battle Result", msg)
         self.accept()
 
     def get_result_summary(self) -> str:
-        return f"You defeated a Level {self.monster_level} {self.monster_name} and found {self.gold_reward} Gold!"
+        if not self.battle_result_narrative:
+            self.battle_result_narrative = get_battle_narrative(self.monster_name, victory=False)
+        return (
+            f"{self.battle_result_narrative}\n\n"
+            f"You defeated a Level {self.monster_level} {self.monster_name} and found {self.gold_reward} Gold!"
+        )

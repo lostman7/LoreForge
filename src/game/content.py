@@ -61,3 +61,23 @@ def calculate_monster_level(player_level: int) -> int:
     """Implement the scaling formula: monster_level = ceil(player_level / 2.0)."""
     import math
     return math.ceil(player_level / 2.0)
+
+
+def get_battle_narrative(monster_name: str, victory: bool = True) -> str:
+    """Return a mini-narrative for battle resolution."""
+    import random
+
+    if victory:
+        narratives = [
+            f"The {monster_name} lunged with a desperate snarl, but you parried the strike and countered for a fatal blow! The creature collapses into the dust.",
+            f"As the {monster_name} readied another assault, you spotted a gap in its guard and delivered a precise, crushing strike. Victory is yours!",
+            f"Dust and blood filled the air as the {monster_name} made its final stand, only for your weapon to find its mark. The threat is extinguished.",
+            f"With a final, heavy strike, you shattered the {monster_name}'s resolve. It let out a last cry before falling still at your feet.",
+        ]
+    else:
+        narratives = [
+            f"The {monster_name}'s speed was too great; a heavy blow sent you reeling as you were forced to retreat from the encounter.",
+            f"Overwhelmed by the {monster_name}'s ferocity, you managed to escape just as its claws tore through your defenses.",
+        ]
+
+    return random.choice(narratives)
