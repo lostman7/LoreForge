@@ -274,6 +274,12 @@ async function init() {
     setupEventListeners();
     showStartScreen();
 
+    // Ensure input is not disabled on startup
+    if (messageInput) {
+        messageInput.disabled = false;
+        messageInput.readOnly = false;
+    }
+
     try {
         // Set volumes
         if (bgMusicStart) bgMusicStart.volume = 0.35;
@@ -692,6 +698,7 @@ async function sendMessage() {
 
     const player = playerPersona && playerPersona.name ? playerPersona.name : document.getElementById('player-select').value;
     messageInput.value = '';
+    messageInput.focus();
 
     addMessage('user', text, player);
 
@@ -780,6 +787,11 @@ function addMessage(type, text, sender) {
         let i = 0;
         textDiv.textContent = '';
         const interval = setInterval(() => {
+            if (chatView.classList.contains('hidden')) {
+                clearInterval(interval);
+                textDiv.textContent = text;
+                return;
+            }
             textDiv.textContent += chars[i];
             i++;
             chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -1033,6 +1045,7 @@ async function openSettings() {
     document.getElementById('ai-backend').value = appConfig.ai?.backend || 'ollama';
     document.getElementById('ai-backend').value = appConfig.ai?.backend || 'ollama';
     document.getElementById('ai-num-ctx').value = appConfig.ai?.num_ctx || 4096;
+    document.getElementById('tts-model-size').value = appConfig.tts?.qwen3_model_size || '0.6B';
     
     // API Keys
     document.getElementById('key-openai').value = appConfig.apis?.openai || '';
@@ -1072,6 +1085,7 @@ async function saveSettings() {
     const backend = document.getElementById('ai-backend').value;
     const model = document.getElementById('model-select').value;
     const numCtx = parseInt(document.getElementById('ai-num-ctx').value) || 4096;
+    const ttsModelSize = document.getElementById('tts-model-size').value;
 
     const newConfig = {
         ...appConfig,
@@ -1080,6 +1094,10 @@ async function saveSettings() {
             backend: backend,
             model: model,
             num_ctx: numCtx
+        },
+        tts: {
+            ...appConfig.tts,
+            qwen3_model_size: ttsModelSize
         },
         apis: {
             ...appConfig.apis,

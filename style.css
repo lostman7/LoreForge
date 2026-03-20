@@ -219,7 +219,8 @@ button.secondary:hover {
     gap: 15px;
     align-items: center;
     position: relative !important;
-    z-index: 9999 !important; /* Force on top of any overlay */
+    z-index: 99999 !important; /* Force on top of any overlay */
+    pointer-events: auto !important; /* Ensure it's clickable */
 }
 
 #message-input {
@@ -347,6 +348,11 @@ h1, h2, h3, .big-btn {
     position: relative;
     width: 100vw;
     height: 100vh;
+}
+
+#dashboard-view.hidden {
+    display: none !important;
+    pointer-events: none !important;
 }
 
 #map-container {

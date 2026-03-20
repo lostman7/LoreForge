@@ -275,6 +275,14 @@
                     <small>Select an installed Ollama model to use for character AI.</small>
                 </div>
                 <div class="form-group">
+                    <label>TTS Model Size</label>
+                    <select id="tts-model-size">
+                        <option value="0.6B">Lightweight (0.6B)</option>
+                        <option value="1.6B">High Fidelity (1.6B)</option>
+                    </select>
+                    <small>Switching takes a few seconds to offload/load VRAM.</small>
+                </div>
+                <div class="form-group">
                     <label>Context Length (Memory Window)</label>
                     <input type="number" id="ai-num-ctx" value="4096" min="1024" max="128000" step="1024">
                 </div>

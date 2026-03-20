@@ -1,0 +1,4 @@
+[2026-03-20T23:20:22.742009]
+User: Hello SNES world!
+AI: Backend Error (ollama): Failed to connect to Ollama. Please check that Ollama is downloaded, running and accessible. https://ollama.com/download
+Summary: User asked (3 words), AI responded (18 words) about conversation
