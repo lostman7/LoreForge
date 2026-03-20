@@ -27,6 +27,9 @@ from src.game.economy import (
     inventory_weight,
     summarize_equipment,
     summarize_inventory,
+    get_thompson_stock,
+    get_mildred_stock,
+    add_item_to_inventory,
 )
 from src.players.player_manager import PlayerManager
 from src.session_logging.session_logger import SessionLogger
@@ -136,6 +139,7 @@ class MainWindow(QMainWindow):
         self.voice_input_received.connect(self.apply_voice_input)
         self.character_speech_enabled = self.config.get('tts', {}).get('character_speech_enabled', False)
         self.current_player_data = None
+        self.battle_counter = 0
 
         # Set up fallback assets
         self.setup_fallback_assets()
@@ -384,6 +388,31 @@ class MainWindow(QMainWindow):
         self.chat_layout.addStretch()  # Push messages to top
         self.chat_scroll.setWidget(self.chat_widget)
         overlay_layout.addWidget(self.chat_scroll)
+
+        # Merchant Storefront UI
+        self.store_widget = QWidget()
+        self.store_widget.setFixedHeight(50)
+        self.store_widget.setStyleSheet("background-color: rgba(60, 60, 60, 0.9); border-bottom: 1px solid #555;")
+        store_layout = QHBoxLayout(self.store_widget)
+        store_layout.setContentsMargins(10, 2, 10, 2)
+
+        store_layout.addWidget(QLabel("🏪 Shop:"))
+        self.item_select = QComboBox()
+        self.item_select.setMinimumWidth(200)
+        store_layout.addWidget(self.item_select)
+
+        from PyQt6.QtWidgets import QSpinBox
+        self.quantity_select = QSpinBox()
+        self.quantity_select.setRange(1, 99)
+        store_layout.addWidget(self.quantity_select)
+
+        self.buy_button = QPushButton("Buy")
+        self.buy_button.setFixedWidth(80)
+        self.buy_button.clicked.connect(self.process_purchase)
+        store_layout.addWidget(self.buy_button)
+
+        self.store_widget.hide() # Hidden until relevant character selected
+        overlay_layout.addWidget(self.store_widget)
 
         # Input area
         input_container = QWidget()
@@ -674,6 +703,12 @@ class MainWindow(QMainWindow):
             self.player_manager.save_player(self.current_player_data)
             self.update_gold_display()
 
+            # Battle Counter & Restocking
+            self.battle_counter += 1
+            if self.battle_counter >= 4:
+                self.battle_counter = 0
+                self.add_chat_bubble("[System: Merchants have restocked their supplies!]", is_user=False, is_system=True)
+
     def update_gold_display(self):
         """Refresh sidebar gold and carry information."""
         if self.current_player_data:
@@ -767,6 +802,54 @@ class MainWindow(QMainWindow):
             self.preset_combo.setCurrentIndex(0)
             self.on_preset_changed(preset_names[0])
 
+    def process_purchase(self):
+        """Handle item purchase logic."""
+        if not self.current_player_data or not self.current_preset: return
+
+        item_name = self.item_select.currentText()
+        qty = self.quantity_select.value()
+
+        # Find item data
+        stock = []
+        if self.current_preset.name == "Thompson": stock = get_thompson_stock()
+        elif self.current_preset.name == "Mildred": stock = get_mildred_stock()
+
+        item_data = next((i for i in stock if i["name"] == item_name), None)
+        if not item_data: return
+
+        total_cost = item_data["price"] * qty
+        if self.current_player_data.gold < total_cost:
+            QMessageBox.warning(self, "Funds", "Insufficient gold!")
+            return
+
+        # Add to inventory
+        for _ in range(qty):
+            add_item_to_inventory(self.current_player_data, item_data)
+
+        self.current_player_data.gold -= total_cost
+        self.player_manager.save_player(self.current_player_data)
+        self.update_gold_display()
+
+        # LLM Roleplay Interaction
+        system_msg = f"[System: The player just purchased {qty} {item_name}(s) for {total_cost} gold.]"
+        self.add_chat_bubble(system_msg, is_user=False, is_system=True)
+
+        # Inject context for AI response
+        self.apply_affinity_bonus(self.current_preset.name, 5)
+
+        # Trigger AI reaction
+        self.send_system_prompt_to_ai(f"I just bought {qty} {item_name}(s) from you. Thank you!")
+
+    def apply_affinity_bonus(self, npc_name, amount):
+        if self.current_player_data:
+            self.current_player_data.update_reputation(npc_name, "friendship", amount)
+            self.player_manager.save_player(self.current_player_data)
+
+    def send_system_prompt_to_ai(self, user_msg):
+        # Implementation of silent injection or manual trigger
+        self.input_field.setPlainText(user_msg)
+        self.send_message()
+
     def on_preset_changed(self, preset_name: str):
         """Handle preset selection change with validation."""
         if not preset_name:
@@ -795,6 +878,15 @@ class MainWindow(QMainWindow):
             self.session_logger.start_session(preset_name, self.current_player)
             self.update_character_speech_button()
             self.update_gold_display()
+
+            # Show store for Thompson/Mildred
+            if preset_name in ["Thompson", "Mildred"]:
+                self.item_select.clear()
+                stock = get_thompson_stock() if preset_name == "Thompson" else get_mildred_stock()
+                self.item_select.addItems([i["name"] for i in stock])
+                self.store_widget.show()
+            else:
+                self.store_widget.hide()
 
             # Update window title with character info
             if self.current_preset:
@@ -1035,6 +1127,10 @@ class MainWindow(QMainWindow):
     def build_roleplay_context(self) -> dict:
         """Build extra system context for roleplay, economy, and inventory."""
         extra_context = {}
+        if self.current_player_data and self.current_preset:
+            rep = self.current_player_data.get_reputation_with(self.current_preset.name)
+            extra_context["current_affinity"] = rep.get("friendship", 0)
+
         if self.current_player_data:
             ensure_player_state(self.current_player_data)
             extra_context["persona"] = {
