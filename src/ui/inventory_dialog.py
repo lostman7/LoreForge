@@ -20,7 +20,11 @@ from PyQt6.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
+    QGridLayout,
+    QToolButton,
 )
+from PyQt6.QtGui import QIcon
+from PyQt6.QtCore import QSize
 
 from src.game.economy import (
     EQUIPMENT_SLOTS,
@@ -86,24 +90,95 @@ class InventoryDialog(QDialog):
         return widget
 
     def build_inventory_tab(self) -> QWidget:
-        """Build inventory tab."""
+        """Build inventory tab with a 16-bit style grid."""
         widget = QWidget()
         layout = QVBoxLayout(widget)
 
-        self.inventory_list = QListWidget()
-        layout.addWidget(self.inventory_list)
+        # Grid for items
+        self.inventory_grid = QGridLayout()
+        self.inventory_grid.setSpacing(10)
+        self.inventory_buttons = []
 
+        # Create 5x5 grid of buttons
+        for row in range(5):
+            for col in range(5):
+                btn = QToolButton()
+                btn.setFixedSize(64, 64)
+                btn.setIconSize(QSize(48, 48))
+                btn.setStyleSheet("""
+                    QToolButton {
+                        background-color: #333;
+                        border: 2px solid #555;
+                        border-radius: 4px;
+                    }
+                    QToolButton:hover {
+                        background-color: #444;
+                        border-color: #777;
+                    }
+                    QToolButton:checked {
+                        background-color: #555;
+                        border-color: #4a90e2;
+                    }
+                """)
+                btn.setCheckable(True)
+                btn.clicked.connect(self.on_inventory_btn_clicked)
+                self.inventory_grid.addWidget(btn, row, col)
+                self.inventory_buttons.append(btn)
+
+        grid_container = QWidget()
+        grid_container.setLayout(self.inventory_grid)
+        layout.addWidget(grid_container)
+
+        # Item info display
+        self.item_info_label = QLabel("Select an item to see details.")
+        self.item_info_label.setWordWrap(True)
+        self.item_info_label.setStyleSheet("color: #ddd; font-style: italic; margin-top: 10px;")
+        layout.addWidget(self.item_info_label)
+
+        # Equipment action row
         action_row = QHBoxLayout()
         self.equip_slot_combo = QComboBox()
         self.equip_slot_combo.addItems([f"{label} ({slot})" for slot, label in EQUIPMENT_SLOTS.items()])
         action_row.addWidget(self.equip_slot_combo)
 
-        equip_button = QPushButton("Equip Selected")
-        equip_button.clicked.connect(self.equip_selected_item)
-        action_row.addWidget(equip_button)
+        self.equip_btn = QPushButton("Equip Selected")
+        self.equip_btn.clicked.connect(self.equip_selected_item)
+        self.equip_btn.setEnabled(False)
+        action_row.addWidget(self.equip_btn)
 
         layout.addLayout(action_row)
+
+        # Gold Pouch
+        self.gold_pouch_label = QLabel(f"💰 Gold Pouch: {self.player.gold}g")
+        self.gold_pouch_label.setStyleSheet("font-size: 14px; font-weight: bold; color: #f0c674; margin-top: 5px;")
+        layout.addWidget(self.gold_pouch_label)
+
         return widget
+
+    def on_inventory_btn_clicked(self):
+        """Handle clicking an inventory grid button."""
+        sender = self.sender()
+        if not sender.isChecked():
+            self.item_info_label.setText("Select an item to see details.")
+            self.equip_btn.setEnabled(False)
+            return
+
+        # Uncheck other buttons
+        for btn in self.inventory_buttons:
+            if btn != sender:
+                btn.setChecked(False)
+
+        item_data = sender.property("item_data")
+        if item_data:
+            self.item_info_label.setText(
+                f"<b>{item_data['name']}</b> (qty {item_data['quantity']})<br/>"
+                f"{item_data.get('description', 'No description.')}<br/>"
+                f"Price: {item_data['price']}g | Weight: {item_data['weight']}"
+            )
+            self.equip_btn.setEnabled(True)
+        else:
+            self.item_info_label.setText("Empty Slot")
+            self.equip_btn.setEnabled(False)
 
     def build_equipment_tab(self) -> QWidget:
         """Build equipment tab."""
@@ -172,9 +247,24 @@ class InventoryDialog(QDialog):
             overview.append(f"- {item['name']} ({item['price']}g, qty {item['quantity']})")
         self.overview_text.setPlainText("\n".join(overview))
 
-        self.inventory_list.clear()
-        for item in self.player.inventory:
-            self.inventory_list.addItem(self.format_item(item))
+        # Refresh grid inventory
+        for i, btn in enumerate(self.inventory_buttons):
+            if i < len(self.player.inventory):
+                item = self.player.inventory[i]
+                btn.setProperty("item_data", item)
+                btn.setToolTip(f"{item['name']} (x{item['quantity']})")
+                # In a real app we'd load an icon based on item.category or name
+                # For now, we'll just use the first letter as a placeholder icon
+                btn.setText(item['name'][0])
+            else:
+                btn.setProperty("item_data", None)
+                btn.setToolTip("Empty Slot")
+                btn.setText("")
+                btn.setIcon(QIcon())
+                btn.setChecked(False)
+
+        if hasattr(self, 'gold_pouch_label'):
+            self.gold_pouch_label.setText(f"💰 Gold Pouch: {self.player.gold}g")
 
         self.equipment_list.clear()
         for slot, label in EQUIPMENT_SLOTS.items():
@@ -228,12 +318,16 @@ class InventoryDialog(QDialog):
 
     def equip_selected_item(self):
         """Equip the selected inventory item."""
-        item = self.inventory_list.currentItem()
-        if not item:
+        selected_btn = next((btn for btn in self.inventory_buttons if btn.isChecked()), None)
+        if not selected_btn:
             QMessageBox.information(self, "Equip Item", "Select an inventory item first.")
             return
 
-        item_name = item.text().split(" — ", 1)[0]
+        item_data = selected_btn.property("item_data")
+        if not item_data:
+            return
+
+        item_name = item_data["name"]
         slot = self.equip_slot_combo.currentText().rsplit("(", 1)[-1].rstrip(")")
         success, message = equip_item(self.player, item_name, slot)
         if not success:

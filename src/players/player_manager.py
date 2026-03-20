@@ -7,7 +7,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 from dataclasses import dataclass, field
 
 from src.game.economy import (
@@ -190,6 +190,27 @@ class Player:
         current = self.reputation[character_name].get(emotion, 0)
         self.reputation[character_name][emotion] = max(-100, min(100, current + delta))
         self.reputation[character_name]["interaction_count"] += 1
+
+    def add_gold(self, amount: int):
+        """Add gold to the player."""
+        self.gold += amount
+
+    def remove_gold(self, amount: int) -> bool:
+        """Remove gold from the player if they have enough."""
+        if self.gold >= amount:
+            self.gold -= amount
+            return True
+        return False
+
+    def add_item(self, item: Dict[str, Any]) -> Tuple[bool, str]:
+        """Add an item to the player's inventory."""
+        from src.game.economy import add_item_to_inventory
+        return add_item_to_inventory(self, item)
+
+    def remove_item(self, item_name: str, quantity: int = 1) -> Tuple[bool, str]:
+        """Remove an item from the player's inventory."""
+        from src.game.economy import remove_item_from_inventory
+        return remove_item_from_inventory(self, item_name, quantity)
 
 
 class PlayerManager:

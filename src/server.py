@@ -162,14 +162,17 @@ async def get_preset(name: str):
 @app.get("/persona")
 async def get_persona():
     if not PERSONA_PATH.exists():
-        return {"name": "Traveler", "backstory": "", "stats": {}}
+        return {"name": "Traveler", "backstory": "", "stats": {}, "gold": 0}
     with open(PERSONA_PATH, 'r') as f:
-        return json.load(f)
+        data = json.load(f)
+        if "gold" not in data:
+            data["gold"] = 0
+        return data
 
 @app.post("/persona")
-async def save_persona(request: PersonaData):
+async def save_persona(request: Dict[str, Any]):
     with open(PERSONA_PATH, 'w') as f:
-        json.dump(request.dict(), f, indent=2)
+        json.dump(request, f, indent=2)
     return {"status": "success"}
 
 @app.post("/presets/refresh")

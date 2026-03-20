@@ -630,12 +630,7 @@ async function loadPresetDetails(name) {
         }
 
         // Handle backstory audio
-        if (battleAttackBtn) battleAttackBtn.addEventListener('click', () => resolveBattleTurn('attack'));
-    if (battleDefendBtn) battleDefendBtn.addEventListener('click', () => resolveBattleTurn('defend'));
-    if (battleFleeBtn) battleFleeBtn.addEventListener('click', fleeBattle);
-    if (battleRerollBtn) battleRerollBtn.addEventListener('click', startMonsterEncounter);
-
-    const backstoryToggleBtn = document.getElementById('backstory-toggle-btn');
+        const backstoryToggleBtn = document.getElementById('backstory-toggle-btn');
         if (currentPreset.backstory_audio_path) {
             backstoryToggleBtn.classList.remove('hidden');
             if (backstoryAudio) {
