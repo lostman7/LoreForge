@@ -21,8 +21,19 @@ from src.audio.tts_manager import TTSManager
 from src.audio.stt_manager import STTManager
 from src.memory.memory_manager import MemoryManager
 from src.ai.ai_model import AIModel
+from src.game.economy import (
+    ensure_player_state,
+    inventory_capacity,
+    inventory_weight,
+    summarize_equipment,
+    summarize_inventory,
+)
+from src.players.player_manager import PlayerManager
 from src.session_logging.session_logger import SessionLogger
+from src.ui.adventure_board_dialog import AdventureBoardDialog
+from src.ui.inventory_dialog import InventoryDialog
 from src.ui.options_dialog import OptionsDialog
+from src.ui.player_creator_dialog import PlayerCreatorDialog
 from src.ui.simple_character_dialog import SimpleCharacterDialog
 
 
@@ -116,6 +127,7 @@ class MainWindow(QMainWindow):
 
         # Initialize managers
         self.preset_manager = PresetManager()
+        self.player_manager = PlayerManager()
         self.tts_manager = TTSManager(self.config)
         self.stt_manager = STTManager(self.config)
         self.memory_manager = MemoryManager(self.config)
@@ -123,6 +135,7 @@ class MainWindow(QMainWindow):
         self.session_logger = SessionLogger()
         self.voice_input_received.connect(self.apply_voice_input)
         self.character_speech_enabled = self.config.get('tts', {}).get('character_speech_enabled', False)
+        self.current_player_data = None
 
         # Set up fallback assets
         self.setup_fallback_assets()
@@ -292,7 +305,6 @@ class MainWindow(QMainWindow):
 
         # Current player selector
         self.player_combo = QComboBox()
-        self.player_combo.addItem("Player 1")
         self.player_combo.setStyleSheet("""
             QComboBox {
                 background-color: #444;
@@ -303,14 +315,41 @@ class MainWindow(QMainWindow):
                 font-size: 11px;
             }
         """)
+        self.player_combo.currentTextChanged.connect(self.on_player_changed)
         player_layout.addWidget(self.player_combo)
 
-        # Add player button
-        add_player_btn = QPushButton("➕ Add Player")
+        add_player_btn = QPushButton("➕ Forge Hero")
         add_player_btn.clicked.connect(self.add_player)
         player_layout.addWidget(add_player_btn)
 
+        self.edit_player_btn = QPushButton("✏️ Edit Persona")
+        self.edit_player_btn.clicked.connect(self.edit_current_player)
+        player_layout.addWidget(self.edit_player_btn)
+
+        self.player_summary_label = QLabel("No hero selected.")
+        self.player_summary_label.setWordWrap(True)
+        self.player_summary_label.setStyleSheet("color: #ddd; font-size: 10px; margin-bottom: 4px;")
+        player_layout.addWidget(self.player_summary_label)
+
+        self.player_gold_label = QLabel("💰 Player Gold: --")
+        player_layout.addWidget(self.player_gold_label)
+
+        self.npc_gold_label = QLabel("🏪 NPC Gold: --")
+        player_layout.addWidget(self.npc_gold_label)
+
+        self.carry_label = QLabel("🎒 Carry: --")
+        player_layout.addWidget(self.carry_label)
+
+        self.hall_button = QPushButton("🎒 Hall of Heroes")
+        self.hall_button.clicked.connect(self.show_inventory_dialog)
+        player_layout.addWidget(self.hall_button)
+
+        self.adventure_board_button = QPushButton("📜 Adventure Board")
+        self.adventure_board_button.clicked.connect(self.show_adventure_board)
+        player_layout.addWidget(self.adventure_board_button)
+
         parent_layout.addWidget(player_group)
+        self.load_players()
 
     def setup_chat_area(self, parent_layout):
         """Set up the central chat area."""
@@ -529,11 +568,140 @@ class MainWindow(QMainWindow):
         self.character_speech_toggle.setText(label)
 
     def add_player(self):
-        """Add a new player to the game."""
-        player_name, ok = QInputDialog.getText(self, "Add Player", "Enter player name:")
-        if ok and player_name.strip():
-            self.player_combo.addItem(player_name.strip())
-            self.player_combo.setCurrentText(player_name.strip())
+        """Create a richer player persona."""
+        dialog = PlayerCreatorDialog(parent=self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        payload = dialog.get_player_payload()
+        if self.player_manager.load_player(payload['name']):
+            QMessageBox.warning(self, "Hero Persona", f"A hero named '{payload['name']}' already exists.")
+            return
+
+        created_player = self.player_manager.upsert_player(payload)
+        self.load_players(selected_name=payload['name'])
+        if not created_player:
+            QMessageBox.warning(self, "Player", f"Could not create hero persona '{payload['name']}'.")
+
+    def load_players(self, selected_name: Optional[str] = None):
+        """Load persistent players into the sidebar."""
+        player_names = self.player_manager.get_player_names()
+        if not player_names:
+            default_player = self.player_manager.create_player(
+                "Player 1",
+                "Human",
+                "Adventurer",
+                title="Guild Rookie",
+                origin="The training yard",
+                motivation="To prove they belong among the guild's legends.",
+                demeanor="Steady",
+            )
+            if default_player:
+                player_names = [default_player.name]
+
+        self.player_combo.blockSignals(True)
+        self.player_combo.clear()
+        self.player_combo.addItems(player_names)
+        self.player_combo.blockSignals(False)
+
+        desired_player = selected_name or self.current_player or (player_names[0] if player_names else None)
+        if desired_player and desired_player in player_names:
+            self.player_combo.setCurrentText(desired_player)
+            self.on_player_changed(desired_player)
+
+    def on_player_changed(self, player_name: str):
+        """Load the selected player's state."""
+        if not player_name:
+            return
+
+        self.current_player = player_name
+        self.current_player_data = self.player_manager.load_player(player_name)
+        if self.current_player_data:
+            ensure_player_state(self.current_player_data)
+        self.update_gold_display()
+        self.update_player_summary()
+
+    def update_player_summary(self):
+        """Refresh the richer player persona summary in the sidebar."""
+        if not hasattr(self, 'player_summary_label'):
+            return
+        if not self.current_player_data:
+            self.player_summary_label.setText("No hero selected.")
+            return
+
+        player = self.current_player_data
+        traits = ', '.join(player.traits[:3]) or 'no traits listed'
+        self.player_summary_label.setText(
+            f"{player.display_name}\n"
+            f"{player.race} {player.profession} from {player.origin}\n"
+            f"Demeanor: {player.demeanor} | Pronouns: {player.pronouns}\n"
+            f"Traits: {traits}"
+        )
+
+    def edit_current_player(self):
+        """Edit the currently selected player persona."""
+        if not self.current_player_data:
+            QMessageBox.information(self, "Hero Persona", "Select a hero first.")
+            return
+
+        dialog = PlayerCreatorDialog(self.current_player_data, self)
+        if dialog.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        payload = dialog.get_player_payload()
+        if payload['name'] != dialog.original_name and self.player_manager.load_player(payload['name']):
+            QMessageBox.warning(self, "Hero Persona", f"A hero named '{payload['name']}' already exists.")
+            return
+
+        updated_player = self.player_manager.upsert_player(payload, previous_name=dialog.original_name)
+        if not updated_player:
+            QMessageBox.warning(self, "Hero Persona", "Failed to save the updated hero persona.")
+            return
+
+        self.current_player = updated_player.name
+        self.current_player_data = updated_player
+        self.load_players(selected_name=updated_player.name)
+
+    def show_adventure_board(self):
+        """Open placeholder quests and arena hooks for the selected hero."""
+        if not self.current_player_data:
+            QMessageBox.warning(self, "Adventure Board", "Select a player first.")
+            return
+
+        dialog = AdventureBoardDialog(self.current_player_data, self)
+        dialog.exec()
+
+    def update_gold_display(self):
+        """Refresh sidebar gold and carry information."""
+        if self.current_player_data:
+            ensure_player_state(self.current_player_data)
+            self.player_gold_label.setText(f"💰 Player Gold: {self.current_player_data.gold}g")
+            self.carry_label.setText(
+                f"🎒 Carry: {inventory_weight(self.current_player_data)}/{inventory_capacity(self.current_player_data)}"
+            )
+        else:
+            self.player_gold_label.setText("💰 Player Gold: --")
+            self.carry_label.setText("🎒 Carry: --")
+
+        npc_gold = "--"
+        if self.current_preset:
+            npc_gold = str(self.current_preset.config.get("economy", {}).get("gold", "--"))
+        self.npc_gold_label.setText(f"🏪 NPC Gold: {npc_gold}g")
+
+    def show_inventory_dialog(self):
+        """Open the Hall of Heroes inventory/equipment/shop dialog."""
+        if not self.current_player_data:
+            QMessageBox.warning(self, "Hall of Heroes", "Select a player first.")
+            return
+
+        dialog = InventoryDialog(self.current_player_data, self.current_preset, self.player_manager, self)
+        dialog.exec()
+        self.current_player_data = self.player_manager.load_player(self.current_player_data.name)
+        if self.current_player_data:
+            ensure_player_state(self.current_player_data)
+        if self.current_preset:
+            self.current_preset = self.preset_manager.reload_preset(self.current_preset.name) or self.current_preset
+        self.update_gold_display()
 
     def create_menu_bar(self):
         """Create the menu bar."""
@@ -623,6 +791,7 @@ class MainWindow(QMainWindow):
             self.memory_manager.load_preset_memory(preset_name, self.current_player)
             self.session_logger.start_session(preset_name, self.current_player)
             self.update_character_speech_button()
+            self.update_gold_display()
 
             # Update window title with character info
             if self.current_preset:
@@ -700,6 +869,10 @@ class MainWindow(QMainWindow):
 
         # Get current player
         current_player = self.player_combo.currentText()
+        if not self.current_player_data:
+            self.current_player_data = self.player_manager.load_player(current_player)
+        if self.current_player_data:
+            ensure_player_state(self.current_player_data)
 
         # Add user message to chat with player context
         self.add_chat_bubble(f"[{current_player}] {message}", is_user=True)
@@ -713,7 +886,12 @@ class MainWindow(QMainWindow):
             enhanced_message = f"Player {current_player} says: {message}"
 
             context = self.memory_manager.get_context(enhanced_message)
-            response = self.ai_model.generate_response(enhanced_message, context, self.current_preset)
+            response = self.ai_model.generate_response(
+                enhanced_message,
+                context,
+                self.current_preset,
+                extra_context=self.build_roleplay_context()
+            )
 
             # Add AI response to chat
             self.add_chat_bubble(response, is_user=False, avatar_path=self.current_preset.avatar_path)
@@ -729,6 +907,7 @@ class MainWindow(QMainWindow):
 
             # Log session with player information
             self.session_logger.log_interaction(message, response, player=current_player)
+            self.update_gold_display()
 
         except Exception as e:
             error_msg = f"Error: {str(e)}"
@@ -818,6 +997,51 @@ class MainWindow(QMainWindow):
             # Apply theme changes
             self.apply_theme()
             # Could add more dynamic updates here
+
+    def build_roleplay_context(self) -> dict:
+        """Build extra system context for roleplay, economy, and inventory."""
+        extra_context = {}
+        if self.current_player_data:
+            ensure_player_state(self.current_player_data)
+            extra_context["persona"] = {
+                "name": self.current_player_data.name,
+                "backstory": self.current_player_data.notes,
+                "summary": self.current_player_data.persona_summary(),
+                "stats": {
+                    "title": self.current_player_data.title,
+                    "pronouns": self.current_player_data.pronouns,
+                    "demeanor": self.current_player_data.demeanor,
+                    "motivation": self.current_player_data.motivation,
+                    "traits": ', '.join(self.current_player_data.traits),
+                    "specialties": ', '.join(self.current_player_data.specialties),
+                    "companions": self.current_player_data.companions,
+                    "gold": self.current_player_data.gold,
+                    "carry_weight": f"{inventory_weight(self.current_player_data)}/{inventory_capacity(self.current_player_data)}",
+                    "inventory": summarize_inventory(self.current_player_data.inventory),
+                    "equipment": summarize_equipment(self.current_player_data.equipment),
+                    "arena_rank": self.current_player_data.arena_record.get('rank', 'Unranked'),
+                    "quest_log": '; '.join(quest['title'] for quest in self.current_player_data.quest_log),
+                }
+            }
+
+        if self.current_preset:
+            economy = self.current_preset.config.get("economy", {})
+            stock = economy.get("shop_inventory", [])
+            if stock:
+                stock_summary = ", ".join(
+                    f"{item['name']} ({item.get('price', 0)}g, qty {item.get('quantity', 1)})"
+                    for item in stock
+                )
+            else:
+                stock_summary = "no shop stock listed"
+            extra_context["economy"] = {
+                "npc_name": self.current_preset.character_name,
+                "npc_gold": economy.get("gold", 0),
+                "pricing_style": economy.get("pricing_style", "standard"),
+                "shop_stock": stock_summary,
+            }
+
+        return extra_context
 
     def save_config(self):
         """Persist the active configuration to disk."""

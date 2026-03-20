@@ -349,6 +349,195 @@ h1, h2, h3, .big-btn {
     height: 100vh;
 }
 
+.guild-board-btn {
+    position: absolute;
+    left: 50%;
+    bottom: 5.5vh;
+    transform: translateX(-50%);
+    width: 340px;
+    padding: 18px 18px 16px;
+    margin: 0;
+    background: linear-gradient(180deg, rgba(120, 74, 28, 0.94), rgba(78, 42, 15, 0.96));
+    border: 4px solid #3a1d08;
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.45);
+    color: #f5dfaa;
+    text-align: center;
+    image-rendering: pixelated;
+    z-index: 18;
+}
+
+.guild-board-btn::before,
+.guild-board-btn::after {
+    content: '';
+    position: absolute;
+    top: 10px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #d7d7d7, #777 45%, #2f2f2f 75%);
+    box-shadow: inset 0 0 2px rgba(255,255,255,0.35);
+}
+
+.guild-board-btn::before { left: 16px; }
+.guild-board-btn::after { right: 16px; }
+
+.guild-board-btn:hover {
+    transform: translateX(-50%) scale(1.05);
+    filter: brightness(1.08);
+    box-shadow: 0 14px 32px rgba(0, 0, 0, 0.55), 0 0 20px rgba(255, 204, 0, 0.18);
+}
+
+.guild-board-btn:active {
+    transform: translateX(-50%) scale(0.98);
+}
+
+.guild-board-btn .board-title {
+    display: block;
+    font-family: var(--retro-font);
+    font-size: 15px;
+    color: #ffd774;
+    margin-bottom: 10px;
+}
+
+.guild-board-btn .board-subtitle {
+    display: block;
+    font-size: 10px;
+    line-height: 1.5;
+    color: #f2e4c1;
+}
+
+#battle-view {
+    flex-grow: 1;
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+    overflow: hidden;
+    z-index: 12;
+}
+
+#battle-background {
+    position: absolute;
+    inset: 0;
+    background: url('assets/images/forest_battle.svg') center/cover no-repeat #08140a;
+    filter: saturate(1.1) brightness(0.78);
+}
+
+#battle-overlay {
+    position: relative;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: linear-gradient(180deg, rgba(4, 10, 4, 0.24), rgba(2, 8, 2, 0.72));
+}
+
+#battle-top-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding: 14px 20px;
+    background: rgba(0, 0, 0, 0.5);
+    border-bottom: 1px solid rgba(255, 204, 0, 0.2);
+}
+
+#battle-status {
+    padding: 8px 14px;
+    background: rgba(0, 0, 0, 0.45);
+    border: 2px solid rgba(255, 204, 0, 0.25);
+    color: #f3edcf;
+    font-size: 10px;
+    text-align: right;
+}
+
+#battle-stage {
+    flex: 1;
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    gap: 24px;
+    align-items: stretch;
+    padding: 28px;
+}
+
+#battle-monster-card, #battle-log {
+    background: rgba(0, 0, 0, 0.56);
+    border: 2px solid rgba(255, 204, 0, 0.25);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.35);
+}
+
+#battle-monster-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 28px;
+    text-align: center;
+}
+
+#battle-monster-icon {
+    font-size: 88px;
+    line-height: 1;
+    margin-bottom: 20px;
+    filter: drop-shadow(0 0 14px rgba(255,255,255,0.12));
+}
+
+#battle-monster-name {
+    font-family: var(--retro-font);
+    color: #ffd774;
+    font-size: 16px;
+    margin-bottom: 14px;
+}
+
+#battle-monster-meta {
+    color: #ede0b7;
+    line-height: 1.7;
+    font-size: 10px;
+}
+
+#battle-log {
+    padding: 20px;
+    overflow-y: auto;
+    font-size: 11px;
+    line-height: 1.7;
+    color: #f7f0d8;
+}
+
+.battle-log-entry {
+    padding: 10px 12px;
+    margin-bottom: 10px;
+    background: rgba(255, 255, 255, 0.04);
+    border-left: 3px solid #7ab65a;
+}
+
+.battle-log-entry.monster { border-left-color: #b85a5a; }
+.battle-log-entry.system { border-left-color: #d8b24b; }
+
+#battle-controls {
+    display: flex;
+    gap: 12px;
+    padding: 18px 24px 24px;
+    background: rgba(0, 0, 0, 0.54);
+    border-top: 1px solid rgba(255, 204, 0, 0.18);
+}
+
+#battle-controls button {
+    margin-bottom: 0;
+}
+
+#battle-controls button.secondary {
+    background: rgba(42, 42, 42, 0.92);
+}
+
+@media (max-width: 1000px) {
+    #battle-stage {
+        grid-template-columns: 1fr;
+    }
+
+    .guild-board-btn {
+        width: min(92vw, 340px);
+    }
+}
+
 /* Specific Parchment Area Alignment */
 #hero-grid {
     position: absolute;
@@ -525,7 +714,7 @@ h1, h2, h3, .big-btn {
 }
 
 /* Sidebar Refinements */
-#sidebar.hidden, #chat-container.hidden, #dashboard-view.hidden, #start-screen.hidden {
+#sidebar.hidden, #chat-container.hidden, #dashboard-view.hidden, #start-screen.hidden, #battle-view.hidden {
     display: none !important;
 }
 

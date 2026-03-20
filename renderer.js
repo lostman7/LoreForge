@@ -7,6 +7,7 @@ const startScreen = document.getElementById('start-screen');
 const enterSign = document.getElementById('enter-sign');
 const dashboardView = document.getElementById('dashboard-view');
 const chatView = document.getElementById('chat-container');
+const battleView = document.getElementById('battle-view');
 const sidebar = document.getElementById('sidebar');
 const heroGrid = document.getElementById('hero-grid');
 const addHeroCard = document.getElementById('add-hero-card');
@@ -25,8 +26,19 @@ const bgMusicStart = document.getElementById('bg-music-start');
 const bgMusicGuild = document.getElementById('bg-music-guild');
 const bgMusicChar = document.getElementById('bg-music-char');
 const personaBtn = document.getElementById('persona-btn');
+const monsterBoard = document.getElementById('monster-board');
 const doorTransitionOverlay = document.getElementById('door-transition-overlay');
 const doorVideo = document.getElementById('door-video');
+const battleBackBtn = document.getElementById('battle-back-btn');
+const battleStatus = document.getElementById('battle-status');
+const battleMonsterIcon = document.getElementById('battle-monster-icon');
+const battleMonsterName = document.getElementById('battle-monster-name');
+const battleMonsterMeta = document.getElementById('battle-monster-meta');
+const battleLog = document.getElementById('battle-log');
+const battleAttackBtn = document.getElementById('battle-attack-btn');
+const battleDefendBtn = document.getElementById('battle-defend-btn');
+const battleFleeBtn = document.getElementById('battle-flee-btn');
+const battleRerollBtn = document.getElementById('battle-reroll-btn');
 
 // Weather elements
 const weatherIcon = document.getElementById('weather-icon');
@@ -51,6 +63,13 @@ let currentWeather = null;
 let playerPersona = null;
 let backstoryAudio = null;
 let isBackstoryPlaying = false;
+let battleState = null;
+
+const MONSTER_POOL = [
+    { id: 'bat', name: 'Cavern Bat', icon: '🦇', baseHp: 16, baseAttack: 4, flavor: 'A screeching shadow dives through the treeline.' },
+    { id: 'skeleton', name: 'Restless Skeleton', icon: '💀', baseHp: 24, baseAttack: 5, flavor: 'Bone and rust stagger out from the roots with a cracked blade.' },
+    { id: 'spider', name: 'Widow Spider', icon: '🕷️', baseHp: 20, baseAttack: 4, flavor: 'A huge spider drops from the canopy on a silk thread.' }
+];
 
 // Weather definitions
 const WEATHERS = [
@@ -121,9 +140,14 @@ function setupEventListeners() {
 
     if (backToDashboardBtn) backToDashboardBtn.addEventListener('click', showDashboard);
     if (chatBackBtn) chatBackBtn.addEventListener('click', showDashboard);
+    if (battleBackBtn) battleBackBtn.addEventListener('click', showDashboard);
     
     if (addHeroCard) addHeroCard.addEventListener('click', () => showModal(charModal));
     
+    if (monsterBoard) {
+        monsterBoard.addEventListener('click', startMonsterEncounter);
+    }
+
     if (personaBtn) {
         personaBtn.addEventListener('click', async () => {
             try {
@@ -215,6 +239,11 @@ function setupEventListeners() {
         });
     }
 
+    if (battleAttackBtn) battleAttackBtn.addEventListener('click', () => resolveBattleTurn('attack'));
+    if (battleDefendBtn) battleDefendBtn.addEventListener('click', () => resolveBattleTurn('defend'));
+    if (battleFleeBtn) battleFleeBtn.addEventListener('click', fleeBattle);
+    if (battleRerollBtn) battleRerollBtn.addEventListener('click', startMonsterEncounter);
+
     const backstoryToggleBtn = document.getElementById('backstory-toggle-btn');
     if (backstoryToggleBtn) {
         backstoryToggleBtn.addEventListener('click', toggleBackstory);
@@ -266,6 +295,7 @@ function showStartScreen() {
     startScreen.classList.remove('hidden');
     dashboardView.classList.add('hidden');
     chatView.classList.add('hidden');
+    battleView.classList.add('hidden');
     sidebar.classList.add('hidden');
 
     // Music
@@ -294,6 +324,7 @@ async function enterGuildHall() {
 function showDashboard() {
     dashboardView.classList.remove('hidden');
     chatView.classList.add('hidden');
+    battleView.classList.add('hidden');
     sidebar.classList.add('hidden');
     currentWeather = null;
 
@@ -302,6 +333,129 @@ function showDashboard() {
     if (bgMusicGuild && bgMusicGuild.paused) {
         bgMusicGuild.play().catch(e => console.log("Guild music blocked"));
     }
+}
+
+function getPersonaLevel() {
+    return Math.max(1, parseInt(playerPersona?.stats?.level, 10) || 1);
+}
+
+function getMonsterLevelForPlayer(playerLevel) {
+    if (playerLevel >= 6) return 3;
+    if (playerLevel >= 4) return 2;
+    return 1;
+}
+
+function appendBattleLog(text, type = 'system') {
+    if (!battleLog) return;
+    const entry = document.createElement('div');
+    entry.className = `battle-log-entry ${type}`;
+    entry.textContent = text;
+    battleLog.appendChild(entry);
+    battleLog.scrollTop = battleLog.scrollHeight;
+}
+
+function refreshBattleUi() {
+    if (!battleState) return;
+
+    const { monster, player } = battleState;
+    battleMonsterIcon.textContent = monster.icon;
+    battleMonsterName.textContent = `${monster.name} — Lv.${monster.level}`;
+    battleMonsterMeta.textContent = `Forest encounter. ${monster.flavor} HP ${monster.hp}/${monster.maxHp} • Your HP ${player.hp}/${player.maxHp}`;
+    battleStatus.textContent = `${player.name} Lv.${player.level} • HP ${player.hp}/${player.maxHp} • ${monster.name} HP ${monster.hp}/${monster.maxHp}`;
+
+    const disabled = battleState.finished;
+    battleAttackBtn.disabled = disabled;
+    battleDefendBtn.disabled = disabled;
+    battleFleeBtn.disabled = disabled;
+}
+
+function showBattleView() {
+    startScreen.classList.add('hidden');
+    dashboardView.classList.add('hidden');
+    chatView.classList.add('hidden');
+    sidebar.classList.add('hidden');
+    battleView.classList.remove('hidden');
+    if (bgMusicChar) bgMusicChar.pause();
+    if (bgMusicGuild && bgMusicGuild.paused) {
+        bgMusicGuild.play().catch(() => {});
+    }
+}
+
+function startMonsterEncounter() {
+    const playerName = playerPersona?.name?.trim() || 'Traveler';
+    const playerLevel = getPersonaLevel();
+    const monsterLevel = getMonsterLevelForPlayer(playerLevel);
+    const template = MONSTER_POOL[Math.floor(Math.random() * MONSTER_POOL.length)];
+    const maxHp = template.baseHp + (monsterLevel - 1) * 8;
+
+    battleState = {
+        finished: false,
+        player: {
+            name: playerName,
+            level: playerLevel,
+            maxHp: 28 + playerLevel * 8,
+            hp: 28 + playerLevel * 8,
+            defending: false,
+        },
+        monster: {
+            ...template,
+            level: monsterLevel,
+            maxHp,
+            hp: maxHp,
+        },
+    };
+
+    battleLog.innerHTML = '';
+    appendBattleLog(`${playerName} accepts a forest contract from the guild hall board.`, 'system');
+    appendBattleLog(`A ${battleState.monster.name} (Lv.${monsterLevel}) appears. ${battleState.monster.flavor}`, 'monster');
+    appendBattleLog(`Scaling rule: player Lv.${playerLevel} faces monster Lv.${monsterLevel}.`, 'system');
+    showBattleView();
+    refreshBattleUi();
+}
+
+function resolveBattleTurn(action) {
+    if (!battleState || battleState.finished) return;
+
+    const { player, monster } = battleState;
+    player.defending = action === 'defend';
+
+    if (action === 'attack') {
+        const damage = 4 + Math.floor(Math.random() * 6) + Math.max(0, player.level - 1);
+        monster.hp = Math.max(0, monster.hp - damage);
+        appendBattleLog(`${player.name} strikes ${monster.name} for ${damage} damage.`, 'user');
+    } else if (action === 'defend') {
+        appendBattleLog(`${player.name} braces for the next hit and tightens their guard.`, 'system');
+    }
+
+    if (monster.hp <= 0) {
+        battleState.finished = true;
+        appendBattleLog(`${monster.name} falls. The forest path is clear—for now.`, 'system');
+        refreshBattleUi();
+        return;
+    }
+
+    let monsterDamage = monster.baseAttack + (monster.level - 1) * 2 + Math.floor(Math.random() * 4);
+    if (player.defending) {
+        monsterDamage = Math.max(1, monsterDamage - (3 + Math.floor(player.level / 2)));
+    }
+
+    player.hp = Math.max(0, player.hp - monsterDamage);
+    appendBattleLog(`${monster.name} hits back for ${monsterDamage} damage.`, 'monster');
+    player.defending = false;
+
+    if (player.hp <= 0) {
+        battleState.finished = true;
+        appendBattleLog(`${player.name} is beaten back and retreats to the guild hall to recover.`, 'system');
+    }
+
+    refreshBattleUi();
+}
+
+function fleeBattle() {
+    if (!battleState || battleState.finished) return;
+    battleState.finished = true;
+    appendBattleLog(`${battleState.player.name} disengages and escapes back toward the guild hall.`, 'system');
+    refreshBattleUi();
 }
 
 async function showChat(presetName) {
@@ -462,7 +616,12 @@ async function loadPresetDetails(name) {
         }
 
         // Handle backstory audio
-        const backstoryToggleBtn = document.getElementById('backstory-toggle-btn');
+        if (battleAttackBtn) battleAttackBtn.addEventListener('click', () => resolveBattleTurn('attack'));
+    if (battleDefendBtn) battleDefendBtn.addEventListener('click', () => resolveBattleTurn('defend'));
+    if (battleFleeBtn) battleFleeBtn.addEventListener('click', fleeBattle);
+    if (battleRerollBtn) battleRerollBtn.addEventListener('click', startMonsterEncounter);
+
+    const backstoryToggleBtn = document.getElementById('backstory-toggle-btn');
         if (currentPreset.backstory_audio_path) {
             backstoryToggleBtn.classList.remove('hidden');
             if (backstoryAudio) {

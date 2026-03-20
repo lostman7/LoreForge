@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900">
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#102515"/>
+      <stop offset="60%" stop-color="#17371f"/>
+      <stop offset="100%" stop-color="#081109"/>
+    </linearGradient>
+    <linearGradient id="mist" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#bcdbb7" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#bcdbb7" stop-opacity="0.22"/>
+    </linearGradient>
+  </defs>
+  <rect width="1600" height="900" fill="url(#sky)"/>
+  <ellipse cx="880" cy="180" rx="220" ry="90" fill="#dff3c5" opacity="0.08"/>
+  <rect y="560" width="1600" height="340" fill="#0b150d"/>
+  <path d="M0 640 C220 560 430 700 670 620 C900 540 1130 690 1600 600 L1600 900 L0 900 Z" fill="#122417"/>
+  <path d="M0 700 C250 620 520 770 790 680 C1080 590 1260 760 1600 660 L1600 900 L0 900 Z" fill="#0d1d11"/>
+  <g fill="#09120a">
+    <rect x="120" y="170" width="26" height="560"/><polygon points="133,70 78,240 188,240"/><polygon points="133,130 68,310 198,310"/>
+    <rect x="320" y="130" width="30" height="610"/><polygon points="335,15 270,210 400,210"/><polygon points="335,95 255,315 415,315"/><polygon points="335,180 250,380 420,380"/>
+    <rect x="540" y="190" width="26" height="520"/><polygon points="553,85 490,265 616,265"/><polygon points="553,160 478,345 628,345"/>
+    <rect x="860" y="145" width="28" height="585"/><polygon points="874,40 810,235 938,235"/><polygon points="874,120 794,335 954,335"/><polygon points="874,215 790,420 958,420"/>
+    <rect x="1110" y="165" width="30" height="565"/><polygon points="1125,50 1060,250 1190,250"/><polygon points="1125,145 1045,360 1205,360"/>
+    <rect x="1370" y="155" width="28" height="575"/><polygon points="1384,45 1320,245 1448,245"/><polygon points="1384,140 1304,355 1464,355"/><polygon points="1384,225 1298,440 1470,440"/>
+  </g>
+  <rect y="520" width="1600" height="380" fill="url(#mist)"/>
+</svg>

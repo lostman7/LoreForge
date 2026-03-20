@@ -34,6 +34,11 @@
                 </div>
             </div>
 
+            <button id="monster-board" class="guild-board-btn" title="Hunt a random monster">
+                <span class="board-title">Monster Hunt</span>
+                <span class="board-subtitle">Forest contracts • random bat / skeleton / spider</span>
+            </button>
+
             <audio id="bg-music-start" loop>
                 <source src="assets/images/start screen.mp3" type="audio/mpeg">
             </audio>
@@ -99,6 +104,30 @@
                 </div>
             </div>
         </main>
+
+        <section id="battle-view" class="hidden">
+            <div id="battle-background"></div>
+            <div id="battle-overlay">
+                <div id="battle-top-bar">
+                    <button id="battle-back-btn" class="chat-back-btn" title="Back to Guild Hall">⬅ Guild Hall</button>
+                    <div id="battle-status">No hunt active.</div>
+                </div>
+                <div id="battle-stage">
+                    <div id="battle-monster-card">
+                        <div id="battle-monster-icon">🦇</div>
+                        <div id="battle-monster-name">Waiting for a hunt</div>
+                        <div id="battle-monster-meta">Click the board in the guild hall to start.</div>
+                    </div>
+                    <div id="battle-log"></div>
+                </div>
+                <div id="battle-controls">
+                    <button id="battle-attack-btn">⚔️ Attack</button>
+                    <button id="battle-defend-btn" class="secondary">🛡️ Defend</button>
+                    <button id="battle-flee-btn" class="secondary">🏃 Flee</button>
+                    <button id="battle-reroll-btn" class="secondary">🎲 New Hunt</button>
+                </div>
+            </div>
+        </section>
 
         <!-- Door Transition Video -->
         <div id="door-transition-overlay" class="hidden">

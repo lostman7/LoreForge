@@ -33,5 +33,59 @@
     "documents": "Documents",
     "rag": "rag",
     "backstory_audio": "Background/backstory.mp3"
+  },
+  "economy": {
+    "gold": 1000,
+    "pricing_style": "kind but practical apothecary rates",
+    "shop_inventory": [
+      {
+        "name": "Minor Healing Potion",
+        "category": "potion",
+        "price": 35,
+        "quantity": 4,
+        "weight": 1,
+        "stackable": true,
+        "slot": null,
+        "description": "Restores a bit of health after a hard scrape.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Herbal Antidote",
+        "category": "potion",
+        "price": 45,
+        "quantity": 3,
+        "weight": 1,
+        "stackable": true,
+        "slot": null,
+        "description": "A bitter cure for common toxins.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Stamina Draught",
+        "category": "potion",
+        "price": 55,
+        "quantity": 2,
+        "weight": 1,
+        "stackable": true,
+        "slot": null,
+        "description": "A tonic to keep weary travelers moving.",
+        "capacity_bonus": 0,
+        "rarity": "uncommon"
+      },
+      {
+        "name": "Druid's Salve",
+        "category": "consumable",
+        "price": 28,
+        "quantity": 5,
+        "weight": 1,
+        "stackable": true,
+        "slot": null,
+        "description": "A soothing herbal paste for cuts and burns.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      }
+    ]
   }
 }
