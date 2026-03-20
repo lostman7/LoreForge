@@ -1,8 +1,8 @@
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QMessageBox, QFrame, QProgressBar
+    QDialog, QVBoxLayout, QLabel, QPushButton, QHBoxLayout, QMessageBox, QFrame, QProgressBar, QGraphicsColorizeEffect
 )
-from PyQt6.QtCore import Qt, QTimer, QUrl
-from PyQt6.QtGui import QPixmap, QPalette, QBrush
+from PyQt6.QtCore import Qt, QTimer, QUrl, QPropertyAnimation, QPoint, QEasingCurve, QSequentialAnimationGroup, QParallelAnimationGroup
+from PyQt6.QtGui import QPixmap, QPalette, QBrush, QColor
 from PyQt6.QtMultimedia import QMediaPlayer, QAudioOutput
 import random
 import math
@@ -132,6 +132,43 @@ class BattleDialog(QDialog):
 
         self.main_layout.addLayout(btn_layout)
 
+    def show_damage_feedback(self, target_widget, amount, is_monster=True):
+        """Visual hit feedback: Floating numbers and color flash."""
+        # Floating Number
+        label = QLabel(f"-{amount}", self.battle_frame if is_monster else self)
+        label.setStyleSheet("color: #e74c3c; font-weight: bold; font-size: 20px; background: transparent;")
+
+        if is_monster:
+            start_pos = self.monster_label.pos() + QPoint(40, -20)
+        else:
+            start_pos = self.player_hp_bar.pos() + QPoint(100, -30)
+
+        label.move(start_pos)
+        label.show()
+
+        # Animation
+        anim = QPropertyAnimation(label, b"pos")
+        anim.setDuration(800)
+        anim.setStartValue(start_pos)
+        anim.setEndValue(start_pos + QPoint(0, -60))
+        anim.setEasingCurve(QEasingCurve.Type.OutQuad)
+
+        # Fade/Delete
+        QTimer.singleShot(800, label.deleteLater)
+        anim.start()
+        self._active_anims = getattr(self, '_active_anims', [])
+        self._active_anims.append(anim)
+
+        # Color Flash
+        effect = QGraphicsColorizeEffect()
+        effect.setColor(QColor(255, 0, 0))
+        target_widget.setGraphicsEffect(effect)
+
+        flash_timer = QTimer(self)
+        flash_timer.setSingleShot(True)
+        flash_timer.timeout.connect(lambda: target_widget.setGraphicsEffect(None))
+        flash_timer.start(150)
+
     def attack_monster(self):
         if not self.is_player_turn: return
 
@@ -139,6 +176,7 @@ class BattleDialog(QDialog):
         damage = random.randint(10, 20) + (self.player_speed // 2)
         self.monster_hp = max(0, self.monster_hp - damage)
 
+        self.show_damage_feedback(self.monster_label, damage, is_monster=True)
         self.update_status(f"You struck the {self.monster_name} for {damage} damage!")
         self.refresh_stats_display()
 
@@ -156,6 +194,8 @@ class BattleDialog(QDialog):
         else:
             damage = max(1, self.monster_attack - random.randint(0, 5))
             self.player_hp = max(0, self.player_hp - damage)
+
+            self.show_damage_feedback(self.player_hp_bar, damage, is_monster=False)
             self.update_status(f"The {self.monster_name} hit you for {damage} damage!")
 
         self.refresh_stats_display()
