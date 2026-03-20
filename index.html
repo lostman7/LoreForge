@@ -16,23 +16,28 @@
             </div>
         </div>
 
-        <!-- Dashboard / Hall of Heroes (Guild Hall) -->
+        <!-- Dashboard / Interactive Map -->
         <div id="dashboard-view" class="hidden">
+            <div id="map-container">
+                <img id="main-map" src="assets/game/StoresMap.png" alt="Town Map">
+
+                <!-- Click Zones -->
+                <div class="click-zone" id="zone-smithy" title="Blacksmith (Thompson)" data-preset="Thompson"></div>
+                <div class="click-zone" id="zone-tavern" title="Tavern (Elizabeth)" data-preset="Elizabeth"></div>
+                <div class="click-zone" id="zone-scribe" title="Scribe (Mildred)" data-preset="Mildred"></div>
+                <div class="click-zone" id="zone-guildhall" title="Guild Hall"></div>
+
+                <!-- Hero Avatars on Map -->
+                <div id="map-heroes"></div>
+            </div>
+
             <header class="dashboard-header">
-                <h1>Hall of Heroes</h1>
-                <p>Welcome to the Guild Hall</p>
+                <h1>Veridia Square</h1>
+                <p>Interactive Map</p>
             </header>
             
             <!-- Persona Button -->
             <button id="persona-btn" class="persona-btn" title="Set your Persona">👤 Persona</button>
-
-            <div id="hero-grid">
-                <!-- Character tiles will be injected here -->
-                <div class="hero-tile add-hero" id="add-hero-card">
-                    <div class="tile-icon">➕</div>
-                    <div class="tile-name">Create Hero</div>
-                </div>
-            </div>
 
             <button id="monster-board" class="guild-board-btn" title="Hunt a random monster">
                 <span class="board-title">Monster Hunt</span>
@@ -75,6 +80,7 @@
                 <h3>🎵 Controls</h3>
                 <button id="stt-btn" class="toggle-btn">🎤 Start STT</button>
                 <button id="tts-btn" class="toggle-btn">🔊 Voice: OFF</button>
+                <button id="index-docs-btn" class="secondary">📚 Index Documents</button>
             </div>
         </aside>
 

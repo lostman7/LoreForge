@@ -249,11 +249,17 @@ def summarize_equipment(equipment: Dict[str, Dict[str, Any] | None]) -> str:
 
 def get_thompson_stock() -> List[Dict[str, Any]]:
     """Return inventory exclusively for Thompson (Weapons/Armor)."""
-    return [
+    stock = [
         make_item("Iron Broadsword", "weapon", 60, weight=3, slot="main_hand", description="A sturdy iron blade."),
         make_item("Steel Plate", "armor", 200, weight=5, slot="over_torso", description="High-grade steel protection."),
         make_item("Wooden Buckler", "armor", 40, weight=2, slot="off_hand", description="A small wooden shield."),
+        make_item("Great Helmet", "armor", 80, weight=3, slot="head", description="A heavy steel helmet. Decreases speed slightly but offers great protection."),
     ]
+    # Add speed bonus (or penalty) for testing
+    stock[0]["speed_bonus"] = 2  # Broadsword makes you faster? Maybe balanced?
+    stock[1]["speed_bonus"] = -5 # Heavy plate slows you down
+    stock[3]["speed_bonus"] = -2 # Helmet slows you down
+    return stock
 
 
 def get_mildred_stock() -> List[Dict[str, Any]]:
