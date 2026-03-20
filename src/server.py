@@ -21,6 +21,7 @@ if str(base_dir) not in sys.path:
 
 from src.presets.preset_manager import PresetManager
 from src.audio.stt_manager import STTManager
+from src.audio.tts_manager import TTSManager
 from src.memory.memory_manager import MemoryManager
 from src.ai.ai_model import AIModel
 from src.session_logging.session_logger import SessionLogger
@@ -51,6 +52,7 @@ def save_config(new_config):
 config = load_config()
 preset_manager = PresetManager()
 stt_manager = STTManager(config)
+tts_manager = TTSManager(config)
 memory_manager = MemoryManager(config)
 ai_model = AIModel(config)
 session_logger = SessionLogger()
@@ -78,6 +80,7 @@ class ChatRequest(BaseModel):
     weather: Optional[str] = None
     weather_prompt: Optional[str] = None
     persona: Optional[PersonaData] = None
+    tts_enabled: Optional[bool] = False
 
 class ChatResponse(BaseModel):
     response: str
@@ -244,7 +247,7 @@ async def create_preset(request: CharacterCreateRequest):
         raise HTTPException(status_code=500, detail="Failed to create character.")
 
 @app.post("/presets/{name}/chat", response_model=ChatResponse)
-async def chat(name: str, request: ChatRequest):
+async def chat(name: str, request: ChatRequest, background_tasks: BackgroundTasks):
     preset = preset_manager.load_preset(name)
     if not preset:
         raise HTTPException(status_code=404, detail="Preset not found")
@@ -269,6 +272,10 @@ async def chat(name: str, request: ChatRequest):
     
     try:
         response_text = ai_model.generate_response(enhanced_message, context, preset, extra_context=extra_context)
+
+        # Trigger TTS if enabled
+        if request.tts_enabled:
+            background_tasks.add_task(tts_manager.speak, response_text, preset.voice_config, preset)
         
         # Update memory
         memory_manager.add_interaction(enhanced_message, response_text)
@@ -306,12 +313,13 @@ async def get_config():
 @app.post("/config/update")
 @app.post("/config") # Support both paths
 async def update_config(new_config: Dict[str, Any]):
-    global config, ai_model, stt_manager
+    global config, ai_model, stt_manager, tts_manager
     save_config(new_config)
     config = new_config
     # Re-initialize managers that depend on config
     ai_model = AIModel(config)
     stt_manager = STTManager(config)
+    tts_manager = TTSManager(config)
     return {"status": "success"}
 
 @app.post("/stt/start")

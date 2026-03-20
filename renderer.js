@@ -14,7 +14,7 @@ const chatMessages = document.getElementById('chat-messages');
 const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const sttBtn = document.getElementById('stt-btn');
-const indexDocsBtn = document.getElementById('index-docs-btn');
+const ttsBtn = document.getElementById('tts-btn');
 const configBtn = document.getElementById('config-btn');
 const backToDashboardBtn = document.getElementById('back-to-dashboard');
 const chatBackBtn = document.getElementById('chat-back-btn');
@@ -45,6 +45,7 @@ const cancelBtns = document.querySelectorAll('.cancel-btn');
 let currentPreset = null;
 let appConfig = null;
 let isSttActive = false;
+let isTtsEnabled = false;
 let sttSocket = null;
 let currentWeather = null;
 let playerPersona = null;
@@ -196,7 +197,7 @@ function setupEventListeners() {
         });
     }
 
-    if (indexDocsBtn) indexDocsBtn.addEventListener('click', indexDocuments);
+    if (ttsBtn) ttsBtn.addEventListener('click', toggleTTS);
     if (sttBtn) sttBtn.addEventListener('click', toggleSTT);
 
     const personaAvatarUpload = document.getElementById('persona-avatar-upload');
@@ -505,7 +506,8 @@ async function sendMessage() {
     try {
         const body = {
             message: text,
-            player: player
+            player: player,
+            tts_enabled: isTtsEnabled
         };
 
         // Add weather context
@@ -530,7 +532,15 @@ async function sendMessage() {
         });
 
         const result = await response.json();
-        addMessage('ai', result.response, currentPreset.config.character_name);
+
+        if (isTtsEnabled) {
+            // Delay AI response to sync with TTS start
+            setTimeout(() => {
+                addMessage('ai', result.response, currentPreset.config.character_name);
+            }, 1000);
+        } else {
+            addMessage('ai', result.response, currentPreset.config.character_name);
+        }
     } catch (err) {
         console.error('Failed to send message:', err);
         addMessage('ai', 'Chat Error: Could not connect to AI server.', 'System');
@@ -545,11 +555,27 @@ function addMessage(type, text, sender) {
     senderSpan.textContent = sender;
     const textDiv = document.createElement('div');
     textDiv.className = 'text';
-    textDiv.textContent = text;
     msgDiv.appendChild(senderSpan);
     msgDiv.appendChild(textDiv);
     chatMessages.appendChild(msgDiv);
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+
+    if (type === 'ai' && isTtsEnabled) {
+        // SNES-style typewriter effect
+        const chars = Array.from(text);
+        let i = 0;
+        textDiv.textContent = '';
+        const interval = setInterval(() => {
+            textDiv.textContent += chars[i];
+            i++;
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+            if (i >= chars.length) {
+                clearInterval(interval);
+            }
+        }, 35); // Approx 30-40ms per character
+    } else {
+        textDiv.textContent = text;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
 }
 
 function toggleBackstory() {
@@ -873,15 +899,12 @@ async function toggleSTT() {
     await fetch(`${API_BASE}/stt/${isSttActive ? 'start' : 'stop'}`, { method: 'POST' });
 }
 
-async function indexDocuments() {
-    if (!currentPreset) return;
-    indexDocsBtn.textContent = '⏳ Indexing...';
-    try {
-        const response = await fetch(`${API_BASE}/presets/${currentPreset.name}/index`, { method: 'POST' });
-        const result = await response.json();
-        alert(result.message);
-    } catch (err) {}
-    indexDocsBtn.textContent = '📚 Index Documents';
+async function toggleTTS() {
+    isTtsEnabled = !isTtsEnabled;
+    if (ttsBtn) {
+        ttsBtn.classList.toggle('active');
+        ttsBtn.textContent = isTtsEnabled ? '🔊 Voice: ON' : '🔊 Voice: OFF';
+    }
 }
 
 function showModal(modal) {
