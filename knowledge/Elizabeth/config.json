@@ -13,7 +13,7 @@
     "personality_weight": 0.8
   },
   "voice": {
-    "engine": "piper",
+    "engine": "qwen3",
     "default_voice_engine": "local"
   },
   "appearance": {

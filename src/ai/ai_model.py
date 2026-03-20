@@ -90,6 +90,8 @@ Immersive Memory:
             prompt += f"\n\nThe person you are speaking with is {persona.get('name', 'an adventurer')}."
             if persona.get('backstory'):
                 prompt += f" Their backstory: {persona['backstory']}"
+            if persona.get('gold') is not None:
+                prompt += f" They currently have {persona['gold']} gold coins."
             if persona.get('stats'):
                 stats = persona['stats']
                 stats_str = ', '.join([f"{k}: {v}" for k, v in stats.items() if v])

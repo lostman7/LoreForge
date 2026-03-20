@@ -15,7 +15,7 @@
     "num_ctx": 4096
   },
   "tts": {
-    "engine": "piper",
+    "engine": "qwen3",
     "elevenlabs_api_key": "",
     "openai_api_key": "",
     "fallback_to_system": true,

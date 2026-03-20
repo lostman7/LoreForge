@@ -66,9 +66,9 @@ let isBackstoryPlaying = false;
 let battleState = null;
 
 const MONSTER_POOL = [
-    { id: 'bat', name: 'Cavern Bat', icon: '🦇', baseHp: 16, baseAttack: 4, flavor: 'A screeching shadow dives through the treeline.' },
-    { id: 'skeleton', name: 'Restless Skeleton', icon: '💀', baseHp: 24, baseAttack: 5, flavor: 'Bone and rust stagger out from the roots with a cracked blade.' },
-    { id: 'spider', name: 'Widow Spider', icon: '🕷️', baseHp: 20, baseAttack: 4, flavor: 'A huge spider drops from the canopy on a silk thread.' }
+    { id: 'bat', name: 'Cavern Bat', icon: '🦇', baseHp: 16, baseAttack: 4, goldReward: [10, 15], flavor: 'A screeching shadow dives through the treeline.' },
+    { id: 'skeleton', name: 'Restless Skeleton', icon: '💀', baseHp: 24, baseAttack: 5, goldReward: [20, 30], flavor: 'Bone and rust stagger out from the roots with a cracked blade.' },
+    { id: 'spider', name: 'Widow Spider', icon: '🕷️', baseHp: 20, baseAttack: 4, goldReward: [15, 25], flavor: 'A huge spider drops from the canopy on a silk thread.' }
 ];
 
 // Weather definitions
@@ -429,7 +429,21 @@ function resolveBattleTurn(action) {
 
     if (monster.hp <= 0) {
         battleState.finished = true;
+
+        // Grant Gold Reward
+        const minGold = monster.goldReward[0];
+        const maxGold = monster.goldReward[1];
+        const goldWon = Math.floor(Math.random() * (maxGold - minGold + 1)) + minGold;
+
+        if (!playerPersona.gold) playerPersona.gold = 0;
+        playerPersona.gold += goldWon;
+
         appendBattleLog(`${monster.name} falls. The forest path is clear—for now.`, 'system');
+        appendBattleLog(`Victory! You found ${goldWon} gold on the creature.`, 'system');
+
+        // Persist new gold to server
+        savePersona();
+
         refreshBattleUi();
         return;
     }
@@ -680,6 +694,7 @@ async function sendMessage() {
             body.persona = {
                 name: playerPersona.name,
                 backstory: playerPersona.backstory || '',
+                gold: playerPersona.gold || 0,
                 stats: playerPersona.stats || {}
             };
         }
@@ -919,6 +934,7 @@ async function savePersona() {
         name: name,
         backstory: document.getElementById('persona-backstory').value,
         avatar: avatarDataUrl,
+        gold: playerPersona?.gold || 0,
         stats: {
             level: parseInt(document.getElementById('persona-level').value) || 1,
             strength: parseInt(document.getElementById('persona-strength').value) || 10,
