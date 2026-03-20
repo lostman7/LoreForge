@@ -16,6 +16,7 @@ const messageInput = document.getElementById('message-input');
 const sendBtn = document.getElementById('send-btn');
 const sttBtn = document.getElementById('stt-btn');
 const ttsBtn = document.getElementById('tts-btn');
+const indexDocsBtn = document.getElementById('index-docs-btn');
 const configBtn = document.getElementById('config-btn');
 const backToDashboardBtn = document.getElementById('back-to-dashboard');
 const chatBackBtn = document.getElementById('chat-back-btn');
@@ -144,6 +145,19 @@ function setupEventListeners() {
     
     if (addHeroCard) addHeroCard.addEventListener('click', () => showModal(charModal));
     
+    // Map Click Zones
+    document.querySelectorAll('.click-zone').forEach(zone => {
+        zone.addEventListener('click', (e) => {
+            const preset = e.target.dataset.preset;
+            if (preset) {
+                showChat(preset);
+            } else if (e.target.id === 'zone-guildhall') {
+                // Guild Hall could open the monster board or a special menu
+                startMonsterEncounter();
+            }
+        });
+    });
+
     if (monsterBoard) {
         monsterBoard.addEventListener('click', startMonsterEncounter);
     }
@@ -222,6 +236,7 @@ function setupEventListeners() {
     }
 
     if (ttsBtn) ttsBtn.addEventListener('click', toggleTTS);
+    if (indexDocsBtn) indexDocsBtn.addEventListener('click', indexCurrentCharacterDocuments);
     if (sttBtn) sttBtn.addEventListener('click', toggleSTT);
 
     const personaAvatarUpload = document.getElementById('persona-avatar-upload');
@@ -556,40 +571,51 @@ async function renderDashboard() {
         const response = await fetch(`${API_BASE}/presets`);
         const presets = await response.json();
         
-        // Clear existing tiles except the "Add" card
-        const existingTiles = heroGrid.querySelectorAll('.hero-tile:not(.add-hero)');
-        existingTiles.forEach(tile => tile.remove());
+        const mapHeroes = document.getElementById('map-heroes');
+        if (mapHeroes) mapHeroes.innerHTML = '';
 
-        presets.forEach(preset => {
-            const tile = document.createElement('div');
-            tile.className = 'hero-tile';
-            
+        // If hero-grid still exists for some reason, clear it
+        if (heroGrid) {
+            const existingTiles = heroGrid.querySelectorAll('.hero-tile:not(.add-hero)');
+            existingTiles.forEach(tile => tile.remove());
+        }
+
+        presets.forEach((preset, index) => {
+            // Render on map
+            const avatar = document.createElement('div');
+            avatar.className = 'map-hero-avatar';
             if (preset.avatar_path) {
-                const img = document.createElement('img');
-                img.className = 'tile-avatar';
-                img.src = `file://${preset.avatar_path}`;
-                tile.appendChild(img);
+                avatar.style.backgroundImage = `url('file://${preset.avatar_path}')`;
             }
+            avatar.title = preset.character_name;
 
-            const name = document.createElement('div');
-            name.className = 'tile-name';
-            name.textContent = preset.character_name;
-            tile.appendChild(name);
+            // Place heroes along a "street" path on the map
+            const streetY = 55; // % from top
+            const startX = 20; // % from left
+            const spacing = 12; // % spacing
+            avatar.style.top = `${streetY}%`;
+            avatar.style.left = `${startX + (index * spacing)}%`;
 
-            tile.addEventListener('click', () => showChat(preset.name));
-            
-            // Delete button
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'delete-char-btn';
-            deleteBtn.innerHTML = 'X';
-            deleteBtn.title = 'Delete Character';
-            deleteBtn.addEventListener('click', (e) => {
-                e.stopPropagation();
-                deleteCharacter(preset.name, preset.character_name);
-            });
-            tile.appendChild(deleteBtn);
+            avatar.addEventListener('click', () => showChat(preset.name));
+            if (mapHeroes) mapHeroes.appendChild(avatar);
 
-            heroGrid.appendChild(tile);
+            // Keep support for grid if it exists
+            if (heroGrid) {
+                const tile = document.createElement('div');
+                tile.className = 'hero-tile';
+                if (preset.avatar_path) {
+                    const img = document.createElement('img');
+                    img.className = 'tile-avatar';
+                    img.src = `file://${preset.avatar_path}`;
+                    tile.appendChild(img);
+                }
+                const name = document.createElement('div');
+                name.className = 'tile-name';
+                name.textContent = preset.character_name;
+                tile.appendChild(name);
+                tile.addEventListener('click', () => showChat(preset.name));
+                heroGrid.appendChild(tile);
+            }
         });
     } catch (err) {
         console.error('Failed to load presets:', err);
@@ -669,6 +695,28 @@ async function sendMessage() {
 
     addMessage('user', text, player);
 
+    // Debug Commands
+    if (text.startsWith('/debug_')) {
+        const parts = text.split(' ');
+        const cmd = parts[0];
+        const val = parts[1];
+
+        try {
+            const res = await fetch(`${API_BASE}/debug`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ command: cmd, value: val })
+            });
+            const data = await res.json();
+            addMessage('ai', `Debug: ${data.message}`, 'System');
+            await loadPersona(); // Refresh UI
+            return;
+        } catch (e) {
+            addMessage('ai', `Debug Error: ${e.message}`, 'System');
+            return;
+        }
+    }
+
     try {
         const body = {
             message: text,
@@ -701,10 +749,10 @@ async function sendMessage() {
         const result = await response.json();
 
         if (isTtsEnabled) {
-            // Delay AI response to sync with TTS start
+            // Delay AI response to sync with TTS start (2s for SNES effect)
             setTimeout(() => {
                 addMessage('ai', result.response, currentPreset.config.character_name);
-            }, 1000);
+            }, 2000);
         } else {
             addMessage('ai', result.response, currentPreset.config.character_name);
         }
@@ -738,7 +786,7 @@ function addMessage(type, text, sender) {
             if (i >= chars.length) {
                 clearInterval(interval);
             }
-        }, 35); // Approx 30-40ms per character
+        }, 30); // 30ms per character for an authentic feel
     } else {
         textDiv.textContent = text;
         chatMessages.scrollTop = chatMessages.scrollHeight;
@@ -1072,6 +1120,21 @@ async function toggleTTS() {
     if (ttsBtn) {
         ttsBtn.classList.toggle('active');
         ttsBtn.textContent = isTtsEnabled ? '🔊 Voice: ON' : '🔊 Voice: OFF';
+    }
+}
+
+async function indexCurrentCharacterDocuments() {
+    if (!currentPreset) return alert('Select a character first.');
+
+    try {
+        const response = await fetch(`${API_BASE}/presets/${currentPreset.name}/index`, {
+            method: 'POST'
+        });
+        const result = await response.json();
+        alert(result.message);
+    } catch (err) {
+        console.error('Failed to index documents:', err);
+        alert('Failed to index documents');
     }
 }
 

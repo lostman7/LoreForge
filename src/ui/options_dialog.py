@@ -121,6 +121,11 @@ class OptionsDialog(QDialog):
         self.tts_engine_combo.addItems(["piper", "qwen3", "elevenlabs", "openai", "system"])
         layout.addRow("TTS Engine:", self.tts_engine_combo)
 
+        # Qwen TTS Model Size
+        self.qwen_model_size_combo = QComboBox()
+        self.qwen_model_size_combo.addItems(["0.6B Parameters", "1.6B Parameters"])
+        layout.addRow("Qwen TTS Model:", self.qwen_model_size_combo)
+
         # STT Engine
         self.stt_engine_combo = QComboBox()
         self.stt_engine_combo.addItems(["google", "openai", "whisper", "huggingface", "system"])
@@ -255,6 +260,13 @@ class OptionsDialog(QDialog):
         tts_config = self.config.get('tts', {})
         stt_config = self.config.get('stt', {})
         self.tts_engine_combo.setCurrentText(tts_config.get('engine', 'piper'))
+
+        qwen_size = tts_config.get('qwen3_model_size', '0.6B')
+        if qwen_size == "1.6B":
+            self.qwen_model_size_combo.setCurrentIndex(1)
+        else:
+            self.qwen_model_size_combo.setCurrentIndex(0)
+
         self.stt_engine_combo.setCurrentText(stt_config.get('engine', 'google'))
         self.language_edit.setText(stt_config.get('language', 'en-US'))
         self.tts_fallback_check.setChecked(tts_config.get('fallback_to_system', True))
@@ -293,11 +305,20 @@ class OptionsDialog(QDialog):
                 'gpu_acceleration': self.gpu_combo.currentText()
             }
 
+            qwen_size_text = self.qwen_model_size_combo.currentText()
+            qwen_size = "1.6B" if "1.6B" in qwen_size_text else "0.6B"
+
             self.config['tts'] = {
                 **self.config.get('tts', {}),
                 'engine': self.tts_engine_combo.currentText(),
+                'qwen3_model_size': qwen_size,
                 'fallback_to_system': self.tts_fallback_check.isChecked()
             }
+            # Update explicit model name to match size
+            self.config['tts']['qwen3_model'] = 'Qwen3-TTS-12Hz-1.7B-Base' if qwen_size == '1.6B' else 'Qwen3-TTS-12Hz-0.6B-Base'
+            # Clear explicit path to allow size-based resolution to pick the new default path
+            if 'qwen3_model_path' in self.config['tts']:
+                del self.config['tts']['qwen3_model_path']
 
             self.config['stt'] = {
                 **self.config.get('stt', {}),

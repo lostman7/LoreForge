@@ -175,6 +175,37 @@ async def save_persona(request: Dict[str, Any]):
         json.dump(request, f, indent=2)
     return {"status": "success"}
 
+@app.post("/debug")
+async def debug_command(request: Dict[str, Any]):
+    command = request.get("command")
+    value = request.get("value")
+
+    if not PERSONA_PATH.exists():
+        persona = {"name": "Traveler", "gold": 0, "stats": {"level": 1}}
+    else:
+        with open(PERSONA_PATH, 'r') as f:
+            persona = json.load(f)
+
+    if command == "/debug_gold":
+        persona["gold"] = persona.get("gold", 0) + int(value or 0)
+        msg = f"Added {value} gold."
+    elif command == "/debug_level":
+        if "stats" not in persona: persona["stats"] = {}
+        persona["stats"]["level"] = int(value or 1)
+        msg = f"Set level to {value}."
+    elif command == "/debug_spawn_item":
+        # Simplified item spawn logic
+        if "inventory" not in persona: persona["inventory"] = []
+        persona["inventory"].append({"id": value, "name": value.replace("_", " ").title()})
+        msg = f"Spawned item: {value}."
+    else:
+        return {"status": "error", "message": "Unknown debug command."}
+
+    with open(PERSONA_PATH, 'w') as f:
+        json.dump(persona, f, indent=2)
+
+    return {"status": "success", "message": msg}
+
 @app.post("/presets/refresh")
 async def refresh_presets():
     preset_manager.refresh_presets()
@@ -257,6 +288,11 @@ async def chat(name: str, request: ChatRequest, background_tasks: BackgroundTask
 
     # Load memory
     memory_manager.load_preset_memory(name, request.player)
+
+    # Automatically index character's 'rag' folder if it exists
+    rag_dir = preset_manager.presets_dir / name / "rag"
+    if rag_dir.exists():
+        memory_manager.index_character_documents(name, rag_dir)
     
     # Construct prompt with context
     enhanced_message = f"Player {request.player} says: {request.message}"

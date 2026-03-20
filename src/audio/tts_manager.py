@@ -185,8 +185,11 @@ class TTSManager:
         base_voice = deepcopy(voice_config or getattr(preset, 'voice_config', VoiceConfig()))
         tts_config = self.config.get('tts', {})
 
+        model_size = tts_config.get('qwen3_model_size', '0.6B')
+        default_model = 'Qwen3-TTS-12Hz-1.7B-Base' if model_size == '1.6B' else 'Qwen3-TTS-12Hz-0.6B-Base'
+
         base_voice.engine = "qwen3"
-        base_voice.qwen_model = base_voice.qwen_model or tts_config.get('qwen3_model') or 'Qwen3-TTS-12Hz-0.6B-Base'
+        base_voice.qwen_model = base_voice.qwen_model or tts_config.get('qwen3_model') or default_model
         base_voice.qwen_model_path = base_voice.qwen_model_path or tts_config.get('qwen3_model_path')
         base_voice.qwen_tokenizer_path = base_voice.qwen_tokenizer_path or tts_config.get('qwen3_tokenizer_path')
         base_voice.qwen_language = base_voice.qwen_language or tts_config.get('qwen3_language') or 'Auto'
@@ -212,6 +215,15 @@ class TTSManager:
         with self._qwen_model_lock:
             if self._qwen_model is not None and self._qwen_model_source == model_source:
                 return self._qwen_model
+
+            # Offload old model if present
+            if self._qwen_model is not None:
+                print(f"[TTS] Offloading old model: {self._qwen_model_source}")
+                self._qwen_model.to("cpu")
+                del self._qwen_model
+                self._qwen_model = None
+                if torch.cuda.is_available():
+                    torch.cuda.empty_cache()
 
             device_map = self._get_qwen_device_map(torch)
             dtype = self._get_qwen_dtype(torch, device_map)
@@ -292,13 +304,22 @@ class TTSManager:
         """Resolve the local Qwen model directory."""
         tts_config = self.config.get('tts', {})
         models_dir = Path(tts_config.get('qwen3_models_dir', './models'))
-        model_hint = (
-            voice_config.qwen_model_path
-            or tts_config.get('qwen3_model_path')
-            or voice_config.qwen_model
-            or tts_config.get('qwen3_model')
-            or 'Qwen3-TTS-12Hz-0.6B-Base'
-        )
+
+        model_size = tts_config.get('qwen3_model_size', '0.6B')
+        default_model = 'Qwen3-TTS-12Hz-1.7B-Base' if model_size == '1.6B' else 'Qwen3-TTS-12Hz-0.6B-Base'
+
+        # Priority: 1. Voice specific path, 2. Config specific path, 3. Size-based default
+        # We ignore qwen3_model if it's one of the defaults to allow the size setting to drive it.
+
+        model_hint = voice_config.qwen_model_path or tts_config.get('qwen3_model_path')
+
+        if not model_hint:
+            custom_model = voice_config.qwen_model or tts_config.get('qwen3_model')
+            if custom_model and custom_model not in ['Qwen3-TTS-12Hz-0.6B-Base', 'Qwen3-TTS-12Hz-1.7B-Base']:
+                model_hint = custom_model
+            else:
+                model_hint = default_model
+
         resolved = self._resolve_local_path_hint(model_hint, models_dir)
         if resolved:
             return str(resolved)
