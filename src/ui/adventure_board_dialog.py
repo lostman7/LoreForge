@@ -12,6 +12,11 @@ from PyQt6.QtWidgets import (
     QHBoxLayout,
     QWidget,
     QPushButton,
+    QLineEdit,
+    QComboBox,
+    QFormLayout,
+    QProgressBar,
+    QGroupBox,
 )
 from PyQt6.QtGui import QPixmap, QIcon
 from PyQt6.QtCore import Qt, QSize
@@ -39,11 +44,9 @@ class AdventureBoardDialog(QDialog):
         self.header_label.setStyleSheet("font-size: 14px; font-weight: bold;")
         layout.addWidget(self.header_label)
 
-        tabs = QTabWidget()
+        self.tabs = QTabWidget()
         self.quest_list = QListWidget()
         self.arena_list = QListWidget()
-        self.hero_notes = QTextEdit()
-        self.hero_notes.setReadOnly(True)
 
         quests_tab = QWidget()
         quests_layout = QVBoxLayout(quests_tab)
@@ -53,14 +56,13 @@ class AdventureBoardDialog(QDialog):
         arena_layout = QVBoxLayout(arena_tab)
         arena_layout.addWidget(self.arena_list)
 
-        hero_tab = QWidget()
-        hero_layout = QVBoxLayout(hero_tab)
-        hero_layout.addWidget(self.hero_notes)
+        self.persona_tab = QWidget()
+        self.init_persona_tab()
 
-        tabs.addTab(quests_tab, "Quest Board")
-        tabs.addTab(arena_tab, "Arena")
-        tabs.addTab(hero_tab, "Hero Hooks")
-        layout.addWidget(tabs)
+        self.tabs.addTab(quests_tab, "Quest Board")
+        self.tabs.addTab(arena_tab, "Arena")
+        self.tabs.addTab(self.persona_tab, "Character Sheet")
+        layout.addWidget(self.tabs)
 
         # Guild Wall (Scroll Button)
         self.scroll_layout = QHBoxLayout()
@@ -159,6 +161,104 @@ class AdventureBoardDialog(QDialog):
             # Emit battle outcome summary to parent for chat logging
             self.parent().voice_input_received.emit(battle.get_result_summary())
 
+    def init_persona_tab(self):
+        """Initialize the new Character Sheet dashboard."""
+        layout = QVBoxLayout(self.persona_tab)
+
+        # Profile Switcher
+        profile_group = QGroupBox("Profile")
+        profile_layout = QFormLayout(profile_group)
+
+        self.hero_dropdown = QComboBox()
+        self.hero_dropdown.currentTextChanged.connect(self.switch_hero)
+        profile_layout.addRow("Active Hero:", self.hero_dropdown)
+
+        self.player_name_edit = QLineEdit()
+        self.player_name_edit.textChanged.connect(self.update_player_name)
+        profile_layout.addRow("Player Name:", self.player_name_edit)
+
+        layout.addWidget(profile_group)
+
+        # Progression Stats
+        stats_group = QGroupBox("Progression")
+        stats_layout = QFormLayout(stats_group)
+
+        self.level_label = QLabel("Level: 1")
+        self.gold_label = QLabel("Gold: 0g")
+        self.xp_bar = QProgressBar()
+        self.xp_bar.setFormat("XP: %v / %m")
+
+        stats_layout.addRow(self.level_label)
+        stats_layout.addRow(self.gold_label)
+        stats_layout.addRow(self.xp_bar)
+
+        layout.addWidget(stats_group)
+
+        # Equipment Dropdowns
+        equip_group = QGroupBox("Equipment")
+        equip_layout = QFormLayout(equip_group)
+
+        self.weapon_dropdown = QComboBox()
+        self.armor_dropdown = QComboBox()
+        self.accessory_dropdown = QComboBox()
+
+        # Connect slots
+        self.weapon_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("main_hand", self.weapon_dropdown))
+        self.armor_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("over_torso", self.armor_dropdown))
+        self.accessory_dropdown.currentIndexChanged.connect(lambda: self.update_equipment("ring", self.accessory_dropdown))
+
+        equip_layout.addRow("Weapon:", self.weapon_dropdown)
+        equip_layout.addRow("Armor:", self.armor_dropdown)
+        equip_layout.addRow("Accessory:", self.accessory_dropdown)
+
+        layout.addWidget(equip_group)
+
+        # Master Inventory List
+        self.inventory_list = QListWidget()
+        layout.addWidget(QLabel("Master Inventory:"))
+        layout.addWidget(self.inventory_list)
+
+        self.refresh_hero_list()
+
+    def refresh_hero_list(self):
+        """Reload the list of saved heroes."""
+        from src.players.player_manager import PlayerManager
+        pm = self.parent().player_manager
+        self.hero_dropdown.blockSignals(True)
+        self.hero_dropdown.clear()
+        self.hero_dropdown.addItems(pm.get_player_names())
+        self.hero_dropdown.setCurrentText(self.player.name)
+        self.hero_dropdown.blockSignals(False)
+
+    def switch_hero(self, hero_name):
+        """Switch the active player profile."""
+        if not hero_name: return
+        pm = self.parent().player_manager
+        new_player = pm.load_player(hero_name)
+        if new_player:
+            self.player = new_player
+            self.load_content()
+            # Notify parent window
+            self.parent().on_player_changed(hero_name)
+
+    def update_player_name(self, name):
+        """Update the player's name and persist."""
+        self.player.name = name
+        self.parent().player_manager.save_player(self.player)
+
+    def update_equipment(self, slot, dropdown):
+        """Handle equipment change from dropdown."""
+        from src.game.economy import equip_item, unequip_item
+        item_name = dropdown.currentText()
+
+        if item_name == "None":
+            unequip_item(self.player, slot)
+        else:
+            equip_item(self.player, item_name, slot)
+
+        self.parent().player_manager.save_player(self.player)
+        self.refresh_inventory_display()
+
     def load_content(self):
         arena = self.player.arena_record
         self.header_label.setText(
@@ -181,23 +281,65 @@ class AdventureBoardDialog(QDialog):
                 f"Style: {challenger['style']} | Signature: {challenger['signature_move']}"
             )
 
-        traits = ", ".join(self.player.traits) or "No traits recorded"
-        specialties = ", ".join(self.player.specialties) or "No specialties recorded"
-        quests = "\n".join(
-            f"• {quest['title']} [{quest['status']}] — {quest['reward']}"
-            for quest in self.player.quest_log
-        ) or "No personal quests tracked yet."
-        self.hero_notes.setPlainText(
-            f"Hero Summary\n"
-            f"Name: {self.player.display_name}\n"
-            f"Pronouns: {self.player.pronouns}\n"
-            f"Origin: {self.player.origin}\n"
-            f"Profession: {self.player.profession}\n"
-            f"Demeanor: {self.player.demeanor}\n"
-            f"Motivation: {self.player.motivation}\n"
-            f"Traits: {traits}\n"
-            f"Specialties: {specialties}\n"
-            f"Companions: {self.player.companions or 'None listed'}\n\n"
-            f"Backstory\n{self.player.notes or 'No backstory recorded.'}\n\n"
-            f"Personal Quest Hooks\n{quests}"
-        )
+        # Update Character Sheet
+        self.player_name_edit.setText(self.player.name)
+        stats = self.player.reputation.get("_stats", {})
+        self.level_label.setText(f"Level: {stats.get('level', 1)}")
+        self.gold_label.setText(f"Gold: {self.player.gold}g")
+
+        xp = stats.get('xp', 0)
+        next_level_xp = stats.get('level', 1) * 100 # Simple logic
+        self.xp_bar.setMaximum(next_level_xp)
+        self.xp_bar.setValue(xp)
+
+        self.refresh_equipment_dropdowns()
+        self.refresh_inventory_display()
+
+    def refresh_equipment_dropdowns(self):
+        """Populate equipment dropdowns from inventory."""
+        self.weapon_dropdown.blockSignals(True)
+        self.armor_dropdown.blockSignals(True)
+        self.accessory_dropdown.blockSignals(True)
+
+        self.weapon_dropdown.clear()
+        self.armor_dropdown.clear()
+        self.accessory_dropdown.clear()
+
+        self.weapon_dropdown.addItem("None")
+        self.armor_dropdown.addItem("None")
+        self.accessory_dropdown.addItem("None")
+
+        for item in self.player.inventory:
+            cat = item.get("category", "")
+            if cat == "weapon":
+                self.weapon_dropdown.addItem(item["name"])
+            elif cat == "armor":
+                self.armor_dropdown.addItem(item["name"])
+            elif cat == "accessory" or cat == "ring":
+                self.accessory_dropdown.addItem(item["name"])
+
+        # Set current equipped
+        eq = self.player.equipment
+        if eq.get("main_hand"): self.weapon_dropdown.setCurrentText(eq["main_hand"]["name"])
+        if eq.get("over_torso"): self.armor_dropdown.setCurrentText(eq["over_torso"]["name"])
+        if eq.get("ring"): self.accessory_dropdown.setCurrentText(eq["ring"]["name"])
+
+        self.weapon_dropdown.blockSignals(False)
+        self.armor_dropdown.blockSignals(False)
+        self.accessory_dropdown.blockSignals(False)
+
+    def refresh_inventory_display(self):
+        """Refresh the master inventory list."""
+        self.inventory_list.clear()
+
+        # Track what is equipped
+        equipped_names = []
+        for item in self.player.equipment.values():
+            if item: equipped_names.append(item["name"])
+
+        for item in self.player.inventory:
+            status = " [In Use]" if item["name"] in equipped_names else ""
+            self.inventory_list.addItem(
+                f"{item['name']} (x{item['quantity']}){status}\n"
+                f"{item.get('description', '')}"
+            )
