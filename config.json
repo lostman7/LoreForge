@@ -21,6 +21,7 @@
     "fallback_to_system": true,
     "voice_model_path": "",
     "character_speech_enabled": false,
+    "qwen3_model_size": "0.6B",
     "qwen3_model": "Qwen3-TTS-12Hz-0.6B-Base",
     "qwen3_model_path": "./models/Qwen3-TTS-12Hz-0.6B-Base",
     "qwen3_tokenizer_path": "./models/Qwen3-TTS-Tokenizer-12Hz",
