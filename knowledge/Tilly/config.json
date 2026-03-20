@@ -13,7 +13,7 @@
     "personality_weight": 0.8
   },
   "voice": {
-    "engine": "piper",
+    "engine": "qwen3",
     "default_voice_engine": "local"
   },
   "appearance": {
@@ -33,5 +33,59 @@
     "documents": "Documents",
     "rag": "rag",
     "backstory_audio": "Background/backstory.mp3"
+  },
+  "economy": {
+    "gold": 250,
+    "pricing_style": "friendly tavern prices with a little gossip built in",
+    "shop_inventory": [
+      {
+        "name": "Ale Mug",
+        "category": "drink",
+        "price": 6,
+        "quantity": 8,
+        "weight": 1,
+        "stackable": true,
+        "slot": null,
+        "description": "A frothy mug of tavern ale.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Hot Stew Bowl",
+        "category": "food",
+        "price": 12,
+        "quantity": 5,
+        "weight": 1,
+        "stackable": true,
+        "slot": null,
+        "description": "A warm, filling stew from the tavern kitchen.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Traveler's Rumor Sheet",
+        "category": "utility",
+        "price": 15,
+        "quantity": 2,
+        "weight": 1,
+        "stackable": false,
+        "slot": null,
+        "description": "A scrap of local rumors and directions gathered by Tilly.",
+        "capacity_bonus": 0,
+        "rarity": "uncommon"
+      },
+      {
+        "name": "Spare Bedroll",
+        "category": "utility",
+        "price": 25,
+        "quantity": 2,
+        "weight": 1,
+        "stackable": false,
+        "slot": "back",
+        "description": "A rolled sleeping bundle for nights on the road.",
+        "capacity_bonus": 6,
+        "rarity": "common"
+      }
+    ]
   }
 }

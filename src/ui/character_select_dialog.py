@@ -3,22 +3,22 @@ Character Selection Dialog - Pre-UI screen for LoreForge.
 Allows users to select characters, access options, and create new characters.
 """
 
-import os
 from pathlib import Path
-from typing import List, Optional
+from typing import Optional
 
 from PyQt6.QtWidgets import (
-    QDialog, QVBoxLayout, QHBoxLayout, QWidget, QLabel,
-    QPushButton, QListWidget, QListWidgetItem, QFrame,
-    QMessageBox, QMenu, QProgressBar, QTextEdit
+    QComboBox, QDialog, QHBoxLayout, QLabel, QListWidget, QListWidgetItem,
+    QFrame, QInputDialog, QMenu, QMessageBox, QProgressBar, QPushButton,
+    QTextEdit, QVBoxLayout, QWidget
 )
 from PyQt6.QtCore import Qt, QTimer, pyqtSignal
-from PyQt6.QtGui import QPixmap, QIcon, QAction
+from PyQt6.QtGui import QAction, QPixmap
 
 from src.presets.preset_manager import PresetManager
 from src.players.player_manager import PlayerManager
-from options_dialog import OptionsDialog
-from simple_character_dialog import SimpleCharacterDialog
+from src.ui.options_dialog import OptionsDialog
+from src.ui.player_creator_dialog import PlayerCreatorDialog
+from src.ui.simple_character_dialog import SimpleCharacterDialog
 
 
 class CharacterSelectDialog(QDialog):
@@ -108,6 +108,7 @@ class CharacterSelectDialog(QDialog):
         # Character list
         self.character_list = QListWidget()
         self.character_list.setMaximumHeight(300)
+        self.character_list.itemClicked.connect(self.on_character_selected)
         self.character_list.itemDoubleClicked.connect(self.on_character_double_clicked)
         self.character_list.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
         self.character_list.customContextMenuRequested.connect(self.show_character_context_menu)
@@ -188,7 +189,7 @@ class CharacterSelectDialog(QDialog):
         player_label.setStyleSheet("font-weight: bold; font-size: 14px;")
         player_header.addWidget(player_label)
 
-        self.add_player_button = QPushButton("➕ Add Player")
+        self.add_player_button = QPushButton("➕ Forge Hero")
         self.add_player_button.clicked.connect(self.show_player_creation)
         self.add_player_button.setStyleSheet("font-size: 11px; padding: 3px 8px;")
         player_header.addWidget(self.add_player_button)
@@ -210,10 +211,16 @@ class CharacterSelectDialog(QDialog):
         """)
         player_layout.addWidget(self.player_combo)
 
+        self.player_summary = QLabel('Forge or select a hero persona to continue.')
+        self.player_summary.setWordWrap(True)
+        self.player_summary.setStyleSheet('color: #d7d7d7; font-size: 11px; margin-top: 6px;')
+        player_layout.addWidget(self.player_summary)
+
         parent_layout.addWidget(player_group)
 
     def load_players(self):
         """Load available players into the combo box."""
+        self.player_combo.blockSignals(True)
         self.player_combo.clear()
         player_names = self.player_manager.get_player_names()
 
@@ -222,31 +229,67 @@ class CharacterSelectDialog(QDialog):
             self.player_combo.setCurrentIndex(0)
             self.selected_player = player_names[0]
         else:
-            self.player_combo.addItem("No players found")
+            self.player_summary.setText('No hero personas found yet. Create one to enter the world.')
             self.selected_player = None
 
-        # Connect selection change
+        self.player_combo.blockSignals(False)
+        try:
+            self.player_combo.currentTextChanged.disconnect(self.on_player_selected)
+        except TypeError:
+            pass
         self.player_combo.currentTextChanged.connect(self.on_player_selected)
+        self.update_player_summary(self.selected_player)
 
     def on_player_selected(self, player_name: str):
         """Handle player selection."""
-        if player_name and player_name != "No players found":
+        if player_name:
             self.selected_player = player_name
         else:
             self.selected_player = None
+        self.update_player_summary(self.selected_player)
 
     def show_player_creation(self):
-        """Show player creation dialog."""
-        dialog = PlayerCreationDialog(self)
+        """Show the richer hero persona creation dialog."""
+        dialog = PlayerCreatorDialog(parent=self)
         if dialog.exec() == QDialog.DialogCode.Accepted:
-            name, race, profession, notes = dialog.get_player_data()
-            if name and race and profession:
-                player = self.player_manager.create_player(name, race, profession, notes)
-                if player:
-                    self.load_players()
-                    QMessageBox.information(self, "Success", f"Player '{name}' created successfully!")
-                else:
-                    QMessageBox.warning(self, "Error", "Failed to create player.")
+            payload = dialog.get_player_payload()
+            if self.original_name_conflicts(dialog.original_name, payload['name']):
+                QMessageBox.warning(self, 'Hero Persona', f"A hero named '{payload['name']}' already exists.")
+                return
+            player = self.player_manager.upsert_player(payload, previous_name=dialog.original_name)
+            if player:
+                self.load_players()
+                self.player_combo.setCurrentText(player.name)
+                self.selected_player = player.name
+                self.update_player_summary(player.name)
+                QMessageBox.information(self, 'Success', f"Hero persona '{player.name}' saved successfully!")
+            else:
+                QMessageBox.warning(self, 'Error', 'Failed to save hero persona.')
+
+
+    def original_name_conflicts(self, original_name: Optional[str], new_name: str) -> bool:
+        """Check if a rename would collide with an existing player file."""
+        existing = self.player_manager.load_player(new_name)
+        return existing is not None and new_name != original_name
+
+    def update_player_summary(self, player_name: Optional[str]):
+        """Refresh the selected player summary card."""
+        if not player_name:
+            self.player_summary.setText('No hero persona selected.')
+            return
+
+        player = self.player_manager.load_player(player_name)
+        if not player:
+            self.player_summary.setText('Unable to load the selected hero persona.')
+            return
+
+        traits = ', '.join(player.traits[:3]) or 'no traits listed'
+        self.player_summary.setText(
+            f"{player.display_name}\n"
+            f"{player.race} {player.profession} from {player.origin}.\n"
+            f"Demeanor: {player.demeanor} | Motivation: {player.motivation}\n"
+            f"Traits: {traits}"
+        )
 
     def on_character_selected(self, item):
         """Handle character selection."""
@@ -498,62 +541,3 @@ class LoadingDialog(QDialog):
         if progress >= 100:
             self.timer.stop()
             QTimer.singleShot(500, self.accept)  # Close after short delay
-
-
-# Import here to avoid circular imports
-from PyQt6.QtWidgets import QInputDialog
-
-
-class PlayerCreationDialog(QDialog):
-    """Dialog for creating new players."""
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self.setWindowTitle("Create New Player")
-        self.setModal(True)
-        self.resize(350, 250)
-
-        layout = QVBoxLayout(self)
-
-        # Form layout for player details
-        form_layout = QFormLayout()
-
-        self.name_edit = QLineEdit()
-        self.name_edit.setPlaceholderText("Player name")
-        form_layout.addRow("Name:", self.name_edit)
-
-        self.race_edit = QLineEdit()
-        self.race_edit.setPlaceholderText("e.g., Human, Elf, Dwarf")
-        form_layout.addRow("Race:", self.race_edit)
-
-        self.profession_edit = QLineEdit()
-        self.profession_edit.setPlaceholderText("e.g., Warrior, Mage, Rogue")
-        form_layout.addRow("Profession:", self.profession_edit)
-
-        self.notes_edit = QTextEdit()
-        self.notes_edit.setMaximumHeight(60)
-        self.notes_edit.setPlaceholderText("Optional background notes...")
-        form_layout.addRow("Notes:", self.notes_edit)
-
-        layout.addLayout(form_layout)
-
-        # Buttons
-        button_layout = QHBoxLayout()
-        self.create_button = QPushButton("Create")
-        self.create_button.clicked.connect(self.accept)
-        self.cancel_button = QPushButton("Cancel")
-        self.cancel_button.clicked.connect(self.reject)
-
-        button_layout.addStretch()
-        button_layout.addWidget(self.create_button)
-        button_layout.addWidget(self.cancel_button)
-        layout.addLayout(button_layout)
-
-    def get_player_data(self):
-        """Get the entered player data."""
-        return (
-            self.name_edit.text().strip(),
-            self.race_edit.text().strip(),
-            self.profession_edit.text().strip(),
-            self.notes_edit.toPlainText().strip()
-        )

@@ -1,0 +1,23 @@
+[
+  {
+    "name": "Bram the Wall",
+    "rank": "Bronze",
+    "style": "Shield-first bruiser",
+    "signature_move": "Gatebreaker Rush",
+    "purse": "12g"
+  },
+  {
+    "name": "Nyra Quickstep",
+    "rank": "Silver",
+    "style": "Duelist skirmisher",
+    "signature_move": "Whisper Feint",
+    "purse": "28g"
+  },
+  {
+    "name": "The Cinder Twins",
+    "rank": "Gold",
+    "style": "Paired chain fighters",
+    "signature_move": "Ashen Spiral",
+    "purse": "60g"
+  }
+]

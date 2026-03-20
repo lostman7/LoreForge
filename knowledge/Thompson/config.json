@@ -13,7 +13,7 @@
     "personality_weight": 0.8
   },
   "voice": {
-    "engine": "piper",
+    "engine": "qwen3",
     "default_voice_engine": "local"
   },
   "appearance": {
@@ -33,5 +33,83 @@
     "documents": "Documents",
     "rag": "rag",
     "backstory_audio": "Background/backstory.mp3"
+  },
+  "economy": {
+    "gold": 1700,
+    "pricing_style": "honest smith pricing with fair deals",
+    "shop_inventory": [
+      {
+        "name": "Iron Sword",
+        "category": "weapon",
+        "price": 50,
+        "quantity": 3,
+        "weight": 2,
+        "stackable": false,
+        "slot": "main_hand",
+        "description": "A standard iron sword fit for daily use.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Iron Spear",
+        "category": "weapon",
+        "price": 50,
+        "quantity": 2,
+        "weight": 2,
+        "stackable": false,
+        "slot": "main_hand",
+        "description": "A balanced iron spear for town guards and hunters.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Wooden Shield",
+        "category": "armor",
+        "price": 50,
+        "quantity": 2,
+        "weight": 2,
+        "stackable": false,
+        "slot": "off_hand",
+        "description": "A sturdy shield with a reinforced boss.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Leather Jerkin",
+        "category": "armor",
+        "price": 80,
+        "quantity": 2,
+        "weight": 2,
+        "stackable": false,
+        "slot": "over_torso",
+        "description": "A basic layer of protective leather armor.",
+        "capacity_bonus": 0,
+        "rarity": "common"
+      },
+      {
+        "name": "Masterwork Longsword",
+        "category": "weapon",
+        "price": 250,
+        "quantity": 1,
+        "weight": 2,
+        "stackable": false,
+        "slot": "main_hand",
+        "description": "A carefully balanced special blade forged by Thompson himself.",
+        "capacity_bonus": 0,
+        "rarity": "rare"
+      },
+      {
+        "name": "Masterwork Heater Shield",
+        "category": "armor",
+        "price": 250,
+        "quantity": 1,
+        "weight": 2,
+        "stackable": false,
+        "slot": "off_hand",
+        "description": "A polished shield with Thompson's crest worked into the rim.",
+        "capacity_bonus": 0,
+        "rarity": "rare"
+      }
+    ]
   }
 }
