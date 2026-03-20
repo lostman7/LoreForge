@@ -669,7 +669,10 @@ class MainWindow(QMainWindow):
             return
 
         dialog = AdventureBoardDialog(self.current_player_data, self)
-        dialog.exec()
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            # Check for result and persist state
+            self.player_manager.save_player(self.current_player_data)
+            self.update_gold_display()
 
     def update_gold_display(self):
         """Refresh sidebar gold and carry information."""
@@ -914,9 +917,22 @@ class MainWindow(QMainWindow):
             self.add_chat_bubble(error_msg, is_user=False)
             QMessageBox.warning(self, "Chat Error", error_msg)
 
-    def add_chat_bubble(self, message: str, is_user: bool = False, avatar_path: Optional[str] = None):
+    def add_chat_bubble(self, message: str, is_user: bool = False, avatar_path: Optional[str] = None, is_system: bool = False):
         """Add a chat bubble to the chat area."""
         bubble = ChatBubble(message, is_user, avatar_path)
+
+        if is_system:
+            bubble.setStyleSheet("""
+                ChatBubble {
+                    background-color: #3e3e3e;
+                    border: 1px dashed #777;
+                    border-radius: 5px;
+                    margin: 5px;
+                    padding: 3px;
+                }
+                QLabel { color: #f0c674; font-style: italic; }
+            """)
+
         self.chat_layout.addWidget(bubble)
 
         # Scroll to bottom
@@ -952,6 +968,11 @@ class MainWindow(QMainWindow):
 
     def apply_voice_input(self, text: str):
         """Apply voice input on the UI thread."""
+        # Check if this is a battle result log (system message)
+        if text.startswith("You defeated"):
+            self.add_chat_bubble(text, is_user=False, is_system=True)
+            return
+
         self.input_field.setPlainText(text)
         self.voice_button.setText("🎤")
         self.stt_toggle.setChecked(False)

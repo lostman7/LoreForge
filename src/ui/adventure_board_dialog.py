@@ -9,10 +9,14 @@ from PyQt6.QtWidgets import (
     QTabWidget,
     QTextEdit,
     QVBoxLayout,
+    QHBoxLayout,
     QWidget,
+    QPushButton,
 )
+from PyQt6.QtGui import QPixmap, QIcon
+from PyQt6.QtCore import Qt, QSize
 
-from src.game.content import load_arena_roster, load_quest_board
+from src.game.content import load_arena_roster, load_quest_board, ASSET_DIR
 
 
 class AdventureBoardDialog(QDialog):
@@ -57,6 +61,33 @@ class AdventureBoardDialog(QDialog):
         tabs.addTab(arena_tab, "Arena")
         tabs.addTab(hero_tab, "Hero Hooks")
         layout.addWidget(tabs)
+
+        # Guild Wall (Scroll Button)
+        self.scroll_layout = QHBoxLayout()
+        self.scroll_layout.addStretch()
+
+        self.scroll_btn = QPushButton()
+        scroll_path = ASSET_DIR / "Scroll.png"
+        if scroll_path.exists():
+            pixmap = QPixmap(str(scroll_path))
+            icon = QIcon(pixmap)
+            self.scroll_btn.setIcon(icon)
+            # Maintain aspect ratio while scaling
+            self.scroll_btn.setIconSize(QSize(64, 64))
+            self.scroll_btn.setFixedSize(70, 70)
+            self.scroll_btn.setToolTip("Start a Monster Encounter!")
+            self.scroll_btn.setStyleSheet("border: none; background: transparent;")
+            self.scroll_btn.clicked.connect(self.start_monster_encounter)
+
+        self.scroll_layout.addWidget(self.scroll_btn)
+        layout.addLayout(self.scroll_layout)
+
+    def start_monster_encounter(self):
+        from src.ui.battle_dialog import BattleDialog
+        battle = BattleDialog(self.player, self)
+        if battle.exec() == QDialog.DialogCode.Accepted:
+            # Emit battle outcome summary to parent for chat logging
+            self.parent().voice_input_received.emit(battle.get_result_summary())
 
     def load_content(self):
         arena = self.player.arena_record
