@@ -118,12 +118,12 @@ class OptionsDialog(QDialog):
 
         # TTS Engine
         self.tts_engine_combo = QComboBox()
-        self.tts_engine_combo.addItems(["piper", "elevenlabs", "openai", "system"])
+        self.tts_engine_combo.addItems(["piper", "qwen3", "elevenlabs", "openai", "system"])
         layout.addRow("TTS Engine:", self.tts_engine_combo)
 
         # STT Engine
         self.stt_engine_combo = QComboBox()
-        self.stt_engine_combo.addItems(["google", "huggingface", "system"])
+        self.stt_engine_combo.addItems(["google", "openai", "whisper", "huggingface", "system"])
         layout.addRow("STT Engine:", self.stt_engine_combo)
 
         # Language
@@ -294,11 +294,13 @@ class OptionsDialog(QDialog):
             }
 
             self.config['tts'] = {
+                **self.config.get('tts', {}),
                 'engine': self.tts_engine_combo.currentText(),
                 'fallback_to_system': self.tts_fallback_check.isChecked()
             }
 
             self.config['stt'] = {
+                **self.config.get('stt', {}),
                 'engine': self.stt_engine_combo.currentText(),
                 'language': self.language_edit.text()
             }

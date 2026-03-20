@@ -96,6 +96,16 @@ Immersive Memory:
                 if stats_str:
                     prompt += f" Their stats: {stats_str}."
 
+        if extra_context and extra_context.get('economy'):
+            economy = extra_context['economy']
+            prompt += (
+                f"\n\nEconomy & Trading State:\n"
+                f"- Your current gold: {economy.get('npc_gold', 0)}\n"
+                f"- Your pricing style: {economy.get('pricing_style', 'standard')}\n"
+                f"- Your available shop stock: {economy.get('shop_stock', 'no stock listed')}\n"
+                "- Keep trade offers grounded in the listed stock and prices when acting as a merchant."
+            )
+
         prompt += "\n\nRespond in-character (first person). Be expressive and true to your lore."
         return prompt
 

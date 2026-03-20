@@ -1,0 +1,29 @@
+[
+  {
+    "title": "Lanterns for the Lower Road",
+    "difficulty": "Easy",
+    "reward": "20g + guild favor",
+    "location": "South Gate",
+    "status": "Open",
+    "summary": "Escorting supply lanterns through a fog-choked road at dusk.",
+    "patron": "Quartermaster Brindle"
+  },
+  {
+    "title": "Ash-Wolf Tracks",
+    "difficulty": "Medium",
+    "reward": "40g + pelt rights",
+    "location": "Pinewake Forest",
+    "status": "Rumored",
+    "summary": "Hunters report an unusually clever wolf pack shadowing merchant caravans.",
+    "patron": "Ranger-Scout Tavia"
+  },
+  {
+    "title": "Bell Under the Old Well",
+    "difficulty": "Hard",
+    "reward": "75g + relic claim",
+    "location": "Harrowmere",
+    "status": "Urgent",
+    "summary": "A buried shrine bell has started tolling on moonless nights, drawing the curious below.",
+    "patron": "Abbess Mirelle"
+  }
+]
