@@ -1039,76 +1039,93 @@ async function savePersona() {
 // ========================================
 
 async function openSettings() {
-    await loadConfig();
-    const configModal = document.getElementById('config-modal');
-    
-    document.getElementById('ai-backend').value = appConfig.ai?.backend || 'ollama';
-    document.getElementById('ai-backend').value = appConfig.ai?.backend || 'ollama';
-    document.getElementById('ai-num-ctx').value = appConfig.ai?.num_ctx || 4096;
-    document.getElementById('tts-model-size').value = appConfig.tts?.qwen3_model_size || '0.6B';
-    
-    // API Keys
-    document.getElementById('key-openai').value = appConfig.apis?.openai || '';
-    document.getElementById('key-claude').value = appConfig.apis?.claude || '';
-    document.getElementById('key-grok').value = appConfig.apis?.grok || '';
-    document.getElementById('key-llama-cloud').value = appConfig.apis?.llama_cloud || '';
+    try {
+        await loadConfig();
+        const configModal = document.getElementById('config-modal');
+        if (!configModal) return;
 
-    // Fetch and populate models
-    const modelSelect = document.getElementById('model-select');
-    if (modelSelect) {
-        modelSelect.innerHTML = '<option value="">-- Loading models... --</option>';
+        const setVal = (id, val) => {
+            const el = document.getElementById(id);
+            if (el) el.value = val || '';
+        };
+
+        setVal('ai-backend', appConfig.ai?.backend || 'ollama');
+        setVal('ai-num-ctx', appConfig.ai?.num_ctx || 4096);
         
-        try {
-            const response = await fetch(`${API_BASE}/ai/models`);
-            const models = await response.json();
-            
-            modelSelect.innerHTML = '<option value="">-- Select a Model --</option>';
-            models.forEach(model => {
-                const opt = document.createElement('option');
-                opt.value = model;
-                opt.textContent = model;
-                if (model === appConfig.ai?.model) {
-                    opt.selected = true;
-                }
-                modelSelect.appendChild(opt);
-            });
-        } catch (err) {
-            console.error('Failed to fetch models:', err);
-            modelSelect.innerHTML = '<option value="">-- Failed to load models --</option>';
-        }
-    }
+        // Fallback for TTS model size
+        const ttsSize = appConfig.tts?.qwen3_model_size || '0.6B';
+        setVal('tts-model-size', ttsSize);
 
-    configModal.classList.remove('hidden');
+        // API Keys
+        setVal('key-openai', appConfig.apis?.openai);
+        setVal('key-claude', appConfig.apis?.claude);
+        setVal('key-grok', appConfig.apis?.grok);
+        setVal('key-llama-cloud', appConfig.apis?.llama_cloud);
+
+        // Fetch and populate models
+        const modelSelect = document.getElementById('model-select');
+        if (modelSelect) {
+            modelSelect.innerHTML = '<option value="">-- Loading models... --</option>';
+            
+            try {
+                const response = await fetch(`${API_BASE}/ai/models`);
+                if (response.ok) {
+                    const models = await response.json();
+                    modelSelect.innerHTML = '<option value="">-- Select a Model --</option>';
+                    models.forEach(model => {
+                        const opt = document.createElement('option');
+                        opt.value = model;
+                        opt.textContent = model;
+                        if (model === appConfig.ai?.model) {
+                            opt.selected = true;
+                        }
+                        modelSelect.appendChild(opt);
+                    });
+                } else {
+                    modelSelect.innerHTML = '<option value="">-- Failed to load models --</option>';
+                }
+            } catch (err) {
+                console.error('Failed to fetch models:', err);
+                modelSelect.innerHTML = '<option value="">-- Failed to load models --</option>';
+            }
+        }
+
+        configModal.classList.remove('hidden');
+    } catch (err) {
+        console.error('Error opening settings:', err);
+    }
 }
 
 async function saveSettings() {
-    const backend = document.getElementById('ai-backend').value;
-    const model = document.getElementById('model-select').value;
-    const numCtx = parseInt(document.getElementById('ai-num-ctx').value) || 4096;
-    const ttsModelSize = document.getElementById('tts-model-size').value;
-
-    const newConfig = {
-        ...appConfig,
-        ai: {
-            ...appConfig.ai,
-            backend: backend,
-            model: model,
-            num_ctx: numCtx
-        },
-        tts: {
-            ...appConfig.tts,
-            qwen3_model_size: ttsModelSize
-        },
-        apis: {
-            ...appConfig.apis,
-            openai: document.getElementById('key-openai').value,
-            claude: document.getElementById('key-claude').value,
-            grok: document.getElementById('key-grok').value,
-            llama_cloud: document.getElementById('key-llama-cloud').value
-        }
-    };
-
     try {
+        const getVal = (id) => document.getElementById(id)?.value;
+
+        const backend = getVal('ai-backend') || 'ollama';
+        const model = getVal('model-select') || '';
+        const numCtx = parseInt(getVal('ai-num-ctx')) || 4096;
+        const ttsModelSize = getVal('tts-model-size') || '0.6B';
+
+        const newConfig = {
+            ...appConfig,
+            ai: {
+                ...appConfig.ai,
+                backend: backend,
+                model: model,
+                num_ctx: numCtx
+            },
+            tts: {
+                ...appConfig.tts,
+                qwen3_model_size: ttsModelSize
+            },
+            apis: {
+                ...appConfig.apis,
+                openai: getVal('key-openai') || '',
+                claude: getVal('key-claude') || '',
+                grok: getVal('key-grok') || '',
+                llama_cloud: getVal('key-llama-cloud') || ''
+            }
+        };
+
         const response = await fetch(`${API_BASE}/config`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -1118,7 +1135,8 @@ async function saveSettings() {
         if (response.ok) {
             appConfig = newConfig;
             alert('Settings saved! You may need to restart for some changes to take effect.');
-            document.getElementById('config-modal').classList.add('hidden');
+            const configModal = document.getElementById('config-modal');
+            if (configModal) configModal.classList.add('hidden');
         }
     } catch (err) {
         console.error('Failed to save settings:', err);

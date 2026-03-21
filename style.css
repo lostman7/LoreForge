@@ -804,7 +804,7 @@ h1, h2, h3, .big-btn {
     display: flex;
     align-items: center;
     justify-content: center;
-    z-index: 1000;
+    z-index: 10000;
     backdrop-filter: blur(8px);
 }
 
@@ -926,7 +926,7 @@ h1, h2, h3, .big-btn {
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    z-index: 1000;
+    z-index: 9999;
     transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
     font-size: 18px;
